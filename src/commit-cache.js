@@ -11,15 +11,77 @@ import { getRepoContext, headers, fetchAllPages, fetchPagesUntil, mapWithConcurr
 
 export const CACHE_FILE = Bun.file(".git/info/forgejo-cache.json.gz");
 
-// Prints a progress line for loops that shell out to git a lot and would
-// otherwise sit silent (and look hung) for as long as a full rebuild on a
-// large repo/branch count takes. Plain lines only (no \r/ANSI overwriting) —
-// prints every ~5% so logs stay readable without being spammed once per item.
-function reportProgress(current, total, label) {
-    if (total <= 0) return;
-    const isLast = current === total;
-    const step = Math.max(1, Math.ceil(total / 20));
-    if (isLast || current % step === 0) console.log(`${label}: ${current}/${total}`);
+// Formats a duration in seconds as a short human string, e.g. "45s" or "3m 12s".
+function formatDuration(seconds) {
+    if (!isFinite(seconds) || seconds < 0) return "?";
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+// Returns a report(current, detail) function for loops that shell out to git
+// a lot and would otherwise sit silent (and look hung) for as long as a full
+// rebuild on a large repo/branch count takes. Fires whenever EITHER ~5% of
+// items have passed OR `minIntervalMs` has elapsed since the last line,
+// whichever comes first — so slow-but-steady work still prints regularly
+// instead of going quiet for a whole 5% block. Each line includes elapsed
+// time, throughput, and ETA so it's possible to tell "slow" from "stuck",
+// plus an optional `detail` (e.g. the item just finished) to know exactly
+// where it is.
+function createProgressReporter(total, label, { minIntervalMs = 5000 } = {}) {
+    const start = Date.now();
+    let lastPrintTime = start;
+    let lastPrintCount = 0;
+    const countStep = Math.max(1, Math.ceil(total / 20));
+    return (current, detail) => {
+        if (total <= 0) return;
+        const now = Date.now();
+        const isLast = current === total;
+        if (!isLast && now - lastPrintTime < minIntervalMs && current - lastPrintCount < countStep) return;
+
+        const elapsedSec = (now - start) / 1000;
+        const rate = current / Math.max(elapsedSec, 0.001);
+        const etaSec = rate > 0 ? (total - current) / rate : Infinity;
+        const detailStr = detail ? ` (${detail})` : "";
+        console.log(
+            `${label}: ${current}/${total}${detailStr} — ${formatDuration(elapsedSec)} elapsed, ${rate.toFixed(2)}/s, ETA ${formatDuration(etaSec)}`
+        );
+        lastPrintTime = now;
+        lastPrintCount = current;
+    };
+}
+
+// Returns a heartbeat(current, total) function for a SINGLE slow operation
+// (e.g. one branch's O(n) candidate scan in computeSingleBranchBase) that
+// would otherwise be invisible to createProgressReporter, which only prints
+// between items, not during one. Silent unless the operation is still
+// running past `afterMs`, so fast/typical cases stay quiet.
+function createHeartbeat(label, afterMs = 5000) {
+    const start = Date.now();
+    let last = start;
+    return (current, total) => {
+        const now = Date.now();
+        if (now - start < afterMs || now - last < afterMs) return;
+        last = now;
+        console.log(`   ⏱  still working — ${label}: ${current}/${total} (${formatDuration((now - start) / 1000)} elapsed)`);
+    };
+}
+
+// Returns an async checkpoint() function that persists the (in-progress,
+// partially-resolved) cache to disk at most once per `intervalMs`. Long
+// syncs (syncPatchIds/resolveDuplicateBranches/resolveBranchBases) call this
+// after every item so that killing/restarting the process — expected on
+// multi-hour first-time builds — resumes from the last checkpoint instead of
+// redoing everything, since all three are already incremental (they skip
+// whatever's already recorded in the cache).
+function createCheckpointer(cache, intervalMs = 30_000) {
+    let last = Date.now();
+    return async () => {
+        if (Date.now() - last < intervalMs) return;
+        await saveCache(cache);
+        last = Date.now();
+        console.log("💾 Checkpoint saved.");
+    };
 }
 
 function emptyCache() {
@@ -74,7 +136,7 @@ export async function saveCache(cache) {
  * enter" lookups never need a per-commit `git show` call.
  * @returns {{newCommitsCount:number, branchUpdatesCount:number, totalHashes:number}}
  */
-export function syncPatchIds(cache) {
+export async function syncPatchIds(cache) {
     const knownHashes = new Set();
     for (const patchId in cache.patch.patchMap) {
         cache.patch.patchMap[patchId].forEach(commit => knownHashes.add(commit.fullHash));
@@ -131,6 +193,8 @@ export function syncPatchIds(cache) {
 
     let newCommitsCount = 0;
     const chunkSize = 100;
+    const checkpoint = createCheckpointer(cache);
+    const reportChunkProgress = createProgressReporter(unindexedHashes.length, "📇 Generating patch-ids");
 
     for (let i = 0; i < unindexedHashes.length; i += chunkSize) {
         const chunk = unindexedHashes.slice(i, i + chunkSize);
@@ -140,7 +204,7 @@ export function syncPatchIds(cache) {
             { maxBuffer: 1024 * 1024 * 50 }
         );
 
-        reportProgress(Math.min(i + chunkSize, unindexedHashes.length), unindexedHashes.length, "📇 Generating patch-ids");
+        reportChunkProgress(Math.min(i + chunkSize, unindexedHashes.length));
 
         if (bulkPatchProcess.exitCode !== 0) {
             console.error(`❌ Bulk patch-id generation failed for chunk starting at index ${i}.`);
@@ -179,6 +243,8 @@ export function syncPatchIds(cache) {
                 cache.patch.emptyCommits.push(hash);
             }
         });
+
+        await checkpoint();
     }
 
     return { newCommitsCount, branchUpdatesCount, totalHashes: lines.length };
@@ -223,7 +289,7 @@ export function resolveContainingBranches(fullHash) {
  * full re-resolve (e.g. after deleting/renaming branches).
  * @returns {{resolvedCount:number, duplicateGroupCount:number}}
  */
-export function resolveDuplicateBranches(cache) {
+export async function resolveDuplicateBranches(cache) {
     const duplicateGroups = Object.values(cache.patch.patchMap).filter(group => group.length > 1);
 
     // Cache the first-parent commit set per branch within this run so multiple
@@ -242,13 +308,16 @@ export function resolveDuplicateBranches(cache) {
     const unresolvedCommits = duplicateGroups.flatMap(group => group.filter(commit => !commit.branchesResolved));
 
     let resolvedCount = 0;
+    const checkpoint = createCheckpointer(cache);
+    const reportCommitProgress = createProgressReporter(unresolvedCommits.length, "🔁 Resolving cherry-pick branches");
     for (const commit of unresolvedCommits) {
         const branches = resolveContainingBranches(commit.fullHash);
         commit.branches = branches;
         commit.firstParentBranches = branches.filter(b => firstParentSet(b).has(commit.fullHash));
         commit.branchesResolved = true;
         resolvedCount++;
-        reportProgress(resolvedCount, unresolvedCommits.length, "🔁 Resolving cherry-pick branches");
+        reportCommitProgress(resolvedCount, commit.hash);
+        await checkpoint();
     }
 
     return { resolvedCount, duplicateGroupCount: duplicateGroups.length };
@@ -429,8 +498,12 @@ function resolveBranchBaseFromPr(cache, branch) {
 function computeSingleBranchBase(branch, branches) {
     let bestBase = null;
     let bestAheadCount = Infinity;
+    const heartbeat = createHeartbeat(`checking candidates for ${branch}`);
 
+    let checked = 0;
     for (const candidate of branches) {
+        checked++;
+        heartbeat(checked, branches.length);
         if (candidate === branch) continue;
         const isAncestor = spawnSync(["git", "merge-base", "--is-ancestor", candidate, branch]).exitCode === 0;
         if (!isAncestor) continue;
@@ -493,7 +566,7 @@ function computeSingleBranchBase(branch, branches) {
  * answer one branch's question. For that, use resolveBranchBase() instead.
  * @returns {{resolvedCount:number, totalBranches:number}}
  */
-export function resolveBranchBases(cache) {
+export async function resolveBranchBases(cache) {
     if (!cache.branch) cache.branch = { relations: {}, bases: {} };
     if (!cache.branch.bases) cache.branch.bases = {};
 
@@ -501,10 +574,13 @@ export function resolveBranchBases(cache) {
     const unresolvedBranches = branches.filter(branch => !cache.branch.bases[branch]);
 
     let resolvedCount = 0;
+    const checkpoint = createCheckpointer(cache);
+    const reportBranchProgress = createProgressReporter(unresolvedBranches.length, "🌳 Resolving branch bases");
     for (const branch of unresolvedBranches) {
         cache.branch.bases[branch] = resolveBranchBaseFromPr(cache, branch) || computeSingleBranchBase(branch, branches);
         resolvedCount++;
-        reportProgress(resolvedCount, unresolvedBranches.length, "🌳 Resolving branch bases");
+        reportBranchProgress(resolvedCount, branch);
+        await checkpoint();
     }
 
     return { resolvedCount, totalBranches: branches.length };
@@ -647,8 +723,8 @@ export async function syncPrCache(cache, forceRebuild = false) {
  * it produces.
  */
 export async function updateCache(cache, { withPrs = true, forceRebuildPrs = false } = {}) {
-    const patchStats = syncPatchIds(cache);
-    const branchStats = resolveDuplicateBranches(cache);
+    const patchStats = await syncPatchIds(cache);
+    const branchStats = await resolveDuplicateBranches(cache);
     if (withPrs) {
         await syncPrCache(cache, forceRebuildPrs);
     }

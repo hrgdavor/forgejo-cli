@@ -33,14 +33,15 @@ const knownBefore =
 console.log(`📦 Loaded existing cache containing ${knownBefore} handled commits.`);
 
 console.log("🔍 Scanning commits and generating patch-ids...");
-const { newCommitsCount, branchUpdatesCount, totalHashes } = syncPatchIds(cache);
+const { newCommitsCount, branchUpdatesCount, totalHashes } = await syncPatchIds(cache);
 
 console.log("🔁 Resolving cherry-pick branch containment...");
-const { resolvedCount, duplicateGroupCount } = resolveDuplicateBranches(cache);
+const { resolvedCount, duplicateGroupCount } = await resolveDuplicateBranches(cache);
 
-console.log("🌳 Resolving branch bases...");
-const { resolvedCount: newBaseBranches, totalBranches } = resolveBranchBases(cache);
-
+// PR metadata must be synced BEFORE resolveBranchBases, since it's the
+// primary source resolveBranchBaseFromPr() checks first — resolving bases
+// beforehand means every branch falls through to the (much slower) O(n²)
+// git fallback for no reason, even on repos with plenty of PR history.
 let prSyncFailed = false;
 if (!skipPrs) {
     try {
@@ -50,6 +51,9 @@ if (!skipPrs) {
         console.log(`⚠️  PR sync failed, continuing with local-only cache: ${e.message}`);
     }
 }
+
+console.log("🌳 Resolving branch bases...");
+const { resolvedCount: newBaseBranches, totalBranches } = await resolveBranchBases(cache);
 
 await saveCache(cache);
 
