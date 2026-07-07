@@ -13,7 +13,7 @@
 //                    branch membership is otherwise only re-resolved for
 //                    commits not yet marked `branchesResolved`).
 //   --no-prs        Skip the Forgejo API sync (offline / no token available).
-import { loadCache, saveCache, syncPatchIds, resolveDuplicateBranches, resolveBranchBases, syncPrCache } from "./commit-cache.js";
+import { loadCache, saveCache, syncPatchIds, resolveDuplicateBranches, resolveBranchBases, syncPrCache, computePatchId, lookupPrForSha } from "./commit-cache.js";
 
 const args = Bun.argv.slice(2);
 const forceRebuild = args.includes("--rebuild") || args.includes("-r");

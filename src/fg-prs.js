@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // list-prs.js
-import { getRepoContext, headers, fetchAllPages } from "./forgejo-utils.js";
+import { getRepoContext, getHeaders, fetchAllPages } from "./forgejo-utils.js";
 
 const { baseUrl, owner, repo } = getRepoContext();
 
@@ -61,7 +61,7 @@ async function listPRsTree() {
 
                 // Only touch individual PR endpoints if the user asked for it
                 if (shouldCheckConflicts) {
-                    const detailsRes = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${pr.number}`, { headers });
+                    const detailsRes = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${pr.number}`, { headers: getHeaders() });
                     const details = await detailsRes.json();
 
                     if (details.mergeable) {

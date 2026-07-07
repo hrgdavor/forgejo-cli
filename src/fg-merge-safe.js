@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // merge-safe-prs.js
-import { getRepoContext, headers, fetchAllPages } from "./forgejo-utils.js";
+import { getRepoContext, getHeaders, fetchAllPages } from "./forgejo-utils.js";
 
 const { baseUrl, owner, repo } = getRepoContext();
 
@@ -14,7 +14,7 @@ async function mergeSafePRs() {
         let mergedCount = 0;
 
         for (const pr of prs) {
-            const detailsRes = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${pr.number}`, { headers });
+            const detailsRes = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${pr.number}`, { headers: getHeaders() });
             const details = await detailsRes.json();
 
             if (!details.mergeable) {
@@ -25,7 +25,7 @@ async function mergeSafePRs() {
             console.log(`🚀 Merging PR #${pr.number}: "${pr.title}"...`);
             const mergeRes = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${pr.number}/merge`, {
                 method: "POST",
-                headers,
+                headers: getHeaders(),
                 body: JSON.stringify({
                     Do: "merge",
                     MergeMessageField: `Automated CLI merge of PR #${pr.number}`

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // create-stack.js
 import { spawnSync } from "bun";
-import { getRepoContext, headers } from "./forgejo-utils.js";
+import { getRepoContext, getHeaders } from "./forgejo-utils.js";
 
 // 1. Safe Git Helper
 function runGit(args) {
@@ -84,7 +84,7 @@ async function createStackPR() {
 
     const response = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls`, {
         method: "POST",
-        headers,
+        headers: getHeaders(),
         body: JSON.stringify({
             base: parentBranch,
             head: currentBranch,

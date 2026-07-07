@@ -1,11 +1,30 @@
 // forgejo-utils.js
 import { spawnSync } from "bun";
 
-export const token = process.env.FORGEJO_TOKEN;
+/**
+ * Lazily reads FORGEJO_TOKEN from the environment. Only throws when actually
+ * called, so scripts that never need the API (e.g. local-only git lookups)
+ * can import from this module without triggering a process.exit().
+ */
+export function getToken() {
+    const t = process.env.FORGEJO_TOKEN;
+    if (!t) {
+        console.error("❌ Error: FORGEJO_TOKEN environment variable is missing.");
+        process.exit(1);
+    }
+    return t;
+}
 
-if (!token) {
-    console.error("❌ Error: FORGEJO_TOKEN environment variable is missing.");
-    process.exit(1);
+/**
+ * Lazily builds the headers object using getToken(), so the token check only
+ * fires when a script actually makes an API call.
+ */
+export function getHeaders() {
+    return {
+        "Authorization": `token ${getToken()}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    };
 }
 
 export function getRepoContext() {
@@ -32,12 +51,6 @@ export function getRepoContext() {
     return { baseUrl, owner, repo };
 }
 
-export const headers = {
-    "Authorization": `token ${token}`,
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-};
-
 /**
  * Generic helper to exhaustively page through any Forgejo/Gitea list endpoint.
  * @param {string} url - The initial endpoint URL (without page/limit query params)
@@ -50,6 +63,7 @@ export async function fetchAllPages(url) {
 
     // Clean up URL parsing if it already contains some query marks
     const separator = url.includes("?") ? "&" : "?";
+    const headers = getHeaders();
 
     while (keepFetching) {
         const targetUrl = `${url}${separator}page=${page}&limit=50`;
@@ -87,6 +101,7 @@ export async function fetchPagesUntil(url, shouldStop) {
     let keepFetching = true;
 
     const separator = url.includes("?") ? "&" : "?";
+    const headers = getHeaders();
 
     while (keepFetching) {
         const targetUrl = `${url}${separator}page=${page}&limit=50`;

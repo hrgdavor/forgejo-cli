@@ -7,7 +7,7 @@
 // Both halves are stored together in one file under .git/info/ so it never
 // risks being committed to the repo and never drifts out of sync with itself.
 import { spawnSync } from "bun";
-import { getRepoContext, headers, fetchAllPages, fetchPagesUntil, mapWithConcurrency } from "./forgejo-utils.js";
+import { getRepoContext, getHeaders, fetchAllPages, fetchPagesUntil, mapWithConcurrency } from "./forgejo-utils.js";
 
 export const CACHE_FILE = Bun.file(".git/info/forgejo-cache.json.gz");
 
@@ -674,7 +674,7 @@ export async function syncPrCache(cache, forceRebuild = false) {
             cache.pr.commitToPr[pr.merge_commit_sha] = pr.number;
         }
 
-        const commitsRes = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${pr.number}/commits`, { headers });
+        const commitsRes = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${pr.number}/commits`, { headers: getHeaders() });
         if (commitsRes.ok) {
             const innerCommits = await commitsRes.json();
             innerCommits.forEach(c => {

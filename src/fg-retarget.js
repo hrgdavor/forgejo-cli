@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // auto-retarget-stack.js
-import { getRepoContext, headers, fetchAllPages } from "./forgejo-utils.js";
+import { getRepoContext, getHeaders, fetchAllPages } from "./forgejo-utils.js";
 
 const { baseUrl, owner, repo } = getRepoContext();
 
@@ -42,7 +42,7 @@ async function autoRetargetStack() {
                 // 4. Update the base branch via Forgejo PATCH endpoint
                 const patchRes = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${pr.number}`, {
                     method: "PATCH",
-                    headers,
+                    headers: getHeaders(),
                     body: JSON.stringify({
                         base: structuralTarget
                     })
