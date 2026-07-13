@@ -15,7 +15,7 @@ export function fail(msg) {
 }
 
 export function info(msg) {
-    console.log(`ℹ️  ${msg}`);
+    console.log(`ℹ️ ${msg}`);
 }
 
 export function ok(msg) {

@@ -38,7 +38,6 @@ async function main() {
     info(`Fetching Redmine issue #${ticketNumber}...`);
     const issue = await fetchRedmineIssue(ticketNumber);
     const title = issue.subject;
-    ok(`Fetched: "${title}"`);
 
     // ── 3. Compute branch name and check config ────────────────────────
     const branchName = `${ticketNumber}-${sanitizeBranchName(title)}`;
@@ -146,7 +145,6 @@ async function main() {
     }
 
     // ── 7. Push branch and create PR ───────────────────────────────────
-    info("Pushing branch to origin...");
     const push = git(["push", "-u", "origin", branchName]);
     if (push.exitCode !== 0 && !resuming) {
         fail(`Failed to push branch "${branchName}": ${push.stderr}`);
@@ -191,7 +189,6 @@ async function main() {
                 : newEntry;
         }
 
-        info(`Updating Redmine custom field #${fieldId}...`);
         const updated = await updateRedmineField(ticketNumber, fieldId, fieldValue);
         if (updated) {
             ok(`Redmine custom field #${fieldId} updated.`);
@@ -208,6 +205,10 @@ async function main() {
     if (fieldId) {
         console.log(`   Redmine field #${fieldId} updated.`);
     }
+
+    // Explicitly exit so the process doesn't hang waiting on stdin
+    // (the "data" listeners registered above keep the event loop alive).
+    process.exit(0);
 }
 
 main().catch(err => {
