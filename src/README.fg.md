@@ -4,27 +4,75 @@ These components work directly inside your project directories, using standard G
 
 ---
 
-To make an environment variable temporary so that it only exists within your **current terminal session** (and disappears as soon as you close that specific window), you skip saving it to your user profile entirely.
+## Environment Variables
 
-Here is how you do that in both PowerShell and Linux.
+These tools require different combinations of environment variables depending on which feature they use:
 
-### The PowerShell Variant (Per-Terminal Only)
+| Variable | Required by | Description |
+|---|---|---|
+| `FORGEJO_TOKEN` | All forgejo-based tools (fg-*.js, red-pr.js) | Forgejo/Gitea personal access token |
+| `REDMINE_URL` | red-pr.js, red-utils.js | Base URL of your Redmine instance (e.g. `https://redmine.example.com`) |
+| `REDMINE_API_KEY` | red-pr.js, red-utils.js | Your Redmine API key |
+
+To set them temporarily in your current terminal session:
+
+### PowerShell (Per-Terminal Only)
 
 ```powershell
 $env:FORGEJO_TOKEN="your_secret_access_token_here"
+$env:REDMINE_URL="https://redmine.example.com"
+$env:REDMINE_API_KEY="your_redmine_api_key_here"
 ```
-* **Scope:** This only lives inside this specific PowerShell window. If you open a second window, it won't be there. If you close the window, it's gone.
+* **Scope:** These only live inside this specific PowerShell window. Close the window and they're gone.
 
----
-
-### The Linux Variant (Per-Terminal Only)
-
-In Linux, you achieve the exact same behavior by using the `export` command directly in your command line without writing it to any files.
+### Linux / macOS (Per-Terminal Only)
 
 ```bash
 export FORGEJO_TOKEN="your_secret_access_token_here"
+export REDMINE_URL="https://redmine.example.com"
+export REDMINE_API_KEY="your_redmine_api_key_here"
 ```
 
+---
+
+## Redmine → PR Workflow
+
+### `red-pr.js`: Create a Branch + PR from a Redmine Ticket
+
+```powershell
+bun ./red-pr.js <ticket-number>
+```
+
+Reads a Redmine issue, creates a local branch `<number>-<sanitized-title>`, pushes it, and opens a Pull Request. Optionally writes branch/PR info back into a Redmine custom field.
+
+**Required env vars:** `FORGEJO_TOKEN`, `REDMINE_URL`, `REDMINE_API_KEY`
+
+**What it does:**
+
+1. **Validates** the ticket number is numeric.
+2. **Checks for existing branches** — scans both local and remote branches for any starting with `<ticketNumber>-`. **Fails with a manual-action message** if found (to prevent accidental duplicate work).
+3. **Fetches the Redmine issue** and reads its subject line.
+4. **Creates a branch** named `<ticketNumber>-<sanitized-title>` (lowercase, special chars → hyphens).
+5. **Switches to `main`** first (pulling latest via `--ff-only`), then creates and checks out the new branch.
+6. **Pushes the branch** to origin and **creates a Pull Request** on Forgejo with title `#<ticketNumber> <title>`.
+7. **Updates a Redmine custom field** — if your project's `package.json` contains a `"redmine_pr_info_field"` property with a numeric custom-field ID, it writes `branchName | PR-link` into that field on the Redmine issue.
+
+**Optional `package.json` config:**
+
+```json
+{
+  "redmine_pr_info_field": 123
+}
+```
+
+Where `123` is the numeric ID of a Redmine custom field to auto-update.
+
+#### Usage examples
+
+```powershell
+bun ./red-pr.js 12345
+bun ./red-pr.js 9999      # another ticket
+```
 ---
 
 ## Stack & PR Management
@@ -183,6 +231,8 @@ Reports two groups: commits with **no equivalent patch anywhere** in the newer b
 
 ## Shared modules
 
-- **`forgejo-utils.js`** — Forgejo/Gitea API primitives: `getRepoContext`, `headers`, `fetchAllPages`.
+- **`utils.js`** — General-purpose utilities shared across all tools: logging (`fail`/`info`/`ok`), `git()` command runner, `readPackageJson()`, `sanitizeBranchName()`.
+- **`forgejo-utils.js`** — Forgejo/Gitea API primitives: `getRepoContext`, `getHeaders` (`FORGEJO_TOKEN`), `fetchAllPages`, `fetchPagesUntil`, `mapWithConcurrency`.
+- **`red-utils.js`** — Redmine API primitives: `getRedmineConfig`, `fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`. Requires `REDMINE_URL` and `REDMINE_API_KEY`.
 - **`commit-cache.js`** — the single consolidated cache module used by `cherry-cache.js` (builds/refreshes it), `cherry.js`, and `fg-find-commit-origin.js` (read-only consumers). See [README.cache.md](README.cache.md) for full details on its structure, incremental behavior, and freshness trade-offs.
 
