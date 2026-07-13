@@ -45,8 +45,16 @@ async function main() {
     const pkg = readPackageJson();
     const defaultBaseBranch = pkg.redmine_pr_default_base_branch || "main";
 
-    // ── 4. Show summary and ask for confirmation ───────────────────────
+    // ── 4. Show summary and decide whether we're resuming ─────────────
     const currentBranch = git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout;
+
+    // If the current branch is exactly the branch this script planned to
+    // create, the previous run most likely created it but failed to push it
+    // (e.g. a transient network error). Treat this as a "resume": skip the
+    // interactive prompts and branch creation, and jump straight to pushing
+    // the branch to the remote and finishing the rest (PR + Redmine).
+    const resuming = currentBranch === branchName;
+
     console.log("");
     console.log(`📍 Current branch : ${currentBranch}`);
     console.log(`🎫 Ticket         : #${ticketNumber} — ${title}`);
@@ -56,7 +64,12 @@ async function main() {
     // Determine PR target: let user pick between current branch and configured default
     let prTarget = defaultBaseBranch;
 
-    if (currentBranch !== defaultBaseBranch) {
+    if (resuming) {
+        info(
+            `Branch "${branchName}" is already checked out — resuming after a failed push. ` +
+            `Skipping prompts and branch creation; using default base "${defaultBaseBranch}".`
+        );
+    } else if (currentBranch !== defaultBaseBranch) {
         const targetChoice = await new Promise(resolve => {
             process.stdout.write(
                 `🎯 Target PR at "${currentBranch}" (current) or "${defaultBaseBranch}"? [c/d] (default: d) `
@@ -76,60 +89,74 @@ async function main() {
         console.log(`🎯 PR will target "${defaultBaseBranch}"`);
     }
 
-    const confirm = await new Promise(resolve => {
-        process.stdout.write("Proceed with creating branch and PR? (y/N) ");
-        process.stdin.once("data", data => {
-            const input = data.toString().trim().toLowerCase();
-            resolve(input === "y" || input === "yes");
+    if (!resuming) {
+        const confirm = await new Promise(resolve => {
+            process.stdout.write("Proceed with creating branch and PR? (y/N) ");
+            process.stdin.once("data", data => {
+                const input = data.toString().trim().toLowerCase();
+                resolve(input === "y" || input === "yes");
+            });
         });
-    });
 
-    if (!confirm) {
-        console.log("Aborted.");
-        process.exit(0);
+        if (!confirm) {
+            console.log("Aborted.");
+            process.exit(0);
+        }
+        console.log("");
     }
-    console.log("");
 
     // ── 5. Check if a branch with this ticket number already exists ────
-    info(`Checking for existing branches matching ticket #${ticketNumber}...`);
+    // (Skipped when resuming — the local branch already exists by definition.)
+    if (!resuming) {
+        info(`Checking for existing branches matching ticket #${ticketNumber}...`);
 
-    // Check local branches
-    const localBranches = git(["branch", "--list", "--format=%(refname:short)"]);
-    const localMatch = localBranches.stdout
-        .split("\n")
-        .find(b => b.startsWith(ticketNumber + "-") || b === ticketNumber);
+        // Check local branches
+        const localBranches = git(["branch", "--list", "--format=%(refname:short)"]);
+        const localMatch = localBranches.stdout
+            .split("\n")
+            .find(b => b.startsWith(ticketNumber + "-") || b === ticketNumber);
 
-    // Check remote branches
-    const remoteBranches = git(["branch", "-r", "--list", "--format=%(refname:short)"]);
-    const remoteMatch = remoteBranches.stdout
-        .split("\n")
-        .find(b => {
-            const short = b.replace(/^origin\//, "");
-            return short.startsWith(ticketNumber + "-") || short === ticketNumber;
-        });
+        // Check remote branches
+        const remoteBranches = git(["branch", "-r", "--list", "--format=%(refname:short)"]);
+        const remoteMatch = remoteBranches.stdout
+            .split("\n")
+            .find(b => {
+                const short = b.replace(/^origin\//, "");
+                return short.startsWith(ticketNumber + "-") || short === ticketNumber;
+            });
 
-    if (localMatch || remoteMatch) {
-        const found = localMatch || remoteMatch;
-        fail(`Branch "${found}" already exists (ticket #${ticketNumber}). Please handle manually.`);
+        if (localMatch || remoteMatch) {
+            const found = localMatch || remoteMatch;
+            fail(`Branch "${found}" already exists (ticket #${ticketNumber}). Please handle manually.`);
+        }
+
+        ok(`No existing branch found for ticket #${ticketNumber}.`);
+
+        // ── 6. Create branch ──────────────────────────────────────────
+        info(`Creating branch: ${branchName} from current HEAD...`);
+
+        // Create and switch to new branch
+        const checkout = git(["checkout", "-b", branchName]);
+        if (checkout.exitCode !== 0) {
+            fail(`Failed to create branch "${branchName}": ${checkout.stderr}`);
+        }
+        ok(`Branch "${branchName}" created and checked out.`);
+    } else {
+        ok(`Resuming on existing branch "${branchName}".`);
     }
-
-    ok(`No existing branch found for ticket #${ticketNumber}.`);
-
-    // ── 6. Create branch ──────────────────────────────────────────────
-    info(`Creating branch: ${branchName} from current HEAD...`);
-
-    // Create and switch to new branch
-    const checkout = git(["checkout", "-b", branchName]);
-    if (checkout.exitCode !== 0) {
-        fail(`Failed to create branch "${branchName}": ${checkout.stderr}`);
-    }
-    ok(`Branch "${branchName}" created and checked out.`);
 
     // ── 7. Push branch and create PR ───────────────────────────────────
     info("Pushing branch to origin...");
     const push = git(["push", "-u", "origin", branchName]);
-    if (push.exitCode !== 0) {
+    if (push.exitCode !== 0 && !resuming) {
         fail(`Failed to push branch "${branchName}": ${push.stderr}`);
+    } else if (push.exitCode !== 0 && resuming) {
+        // When resuming, the branch may already be tracked upstream; retry
+        // without -u so an "already set up to track" error doesn't abort.
+        const push2 = git(["push", "origin", branchName]);
+        if (push2.exitCode !== 0) {
+            fail(`Failed to push branch "${branchName}": ${push2.stderr}`);
+        }
     }
     ok(`Branch pushed to origin/${branchName}.`);
 
