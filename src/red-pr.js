@@ -246,16 +246,12 @@ async function main() {
 
     const ticketNumber = args[0];
 
-    // 1. Validate ticket number
     validateTicketNumber(ticketNumber);
 
-    // 2. Fetch ticket from Redmine to get title
     const { title } = await fetchIssue(ticketNumber);
 
-    // 3. Compute branch name and check config
     const { branchName, pkg, defaultBaseBranch } = computeBranchConfig(ticketNumber, title);
 
-    // 4. Show summary, determine PR target, and confirm
     const currentBranch = getCurrentBranch();
     printSummary(ticketNumber, title, branchName, currentBranch);
 
@@ -263,19 +259,16 @@ async function main() {
     const prTarget = await resolvePrTarget(currentBranch, defaultBaseBranch, resuming, branchName);
     await confirmProceed(resuming);
 
-    // 5. Check if a branch with this ticket number already exists
     if (!resuming) {
         checkExistingBranch(ticketNumber);
     }
 
-    // 6. Create branch
     if (!resuming) {
         createBranch(branchName);
     } else {
         ok(`Resuming on existing branch "${branchName}".`);
     }
 
-    // 7. Push branch and create PR
     if (!resuming) {
         pushBranch(branchName);
     } else {
@@ -283,11 +276,9 @@ async function main() {
     }
     const pr = await createPullRequestForTicket(branchName, ticketNumber, title, prTarget);
 
-    // 8. Update Redmine custom field (if configured)
     const fieldId = pkg.redmine_pr_info_field;
     await updateRedminePrField(pkg, ticketNumber, branchName, pr);
 
-    // Done
     printDone(branchName, pr, fieldId);
 
     // Explicitly exit so the process doesn't hang waiting on stdin
