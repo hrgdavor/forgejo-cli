@@ -135,7 +135,6 @@ function checkExistingBranch(ticketNumber) {
 // ── 6. Create branch ────────────────────────────────────────────────────────
 
 function createBranch(branchName) {
-    info(`Creating branch: ${branchName} from current HEAD...`);
     const checkout = git(["checkout", "-b", branchName]);
     if (checkout.exitCode !== 0) {
         fail(`Failed to create branch "${branchName}": ${checkout.stderr}`);
@@ -165,7 +164,6 @@ function retryPushBranch(branchName) {
 
 async function createPullRequestForTicket(branchName, ticketNumber, title, prTarget) {
     const prTitle = `#${ticketNumber} ${title}`;
-    info(`Creating Pull Request: "${prTitle}"...`);
     const pr = await createPullRequest(branchName, prTitle, prTarget);
     ok(`PR #${pr.number} created: ${pr.html_url}`);
     return pr;
