@@ -259,19 +259,13 @@ async function main() {
 
     if (!resuming) {
         checkExistingBranch(ticketNumber);
-    }
-
-    if (!resuming) {
         createBranch(branchName);
-    } else {
-        ok(`Resuming on existing branch "${branchName}".`);
-    }
-
-    if (!resuming) {
         pushBranch(branchName);
     } else {
+        ok(`Resuming on existing branch "${branchName}".`);
         retryPushBranch(branchName);
     }
+    
     const pr = await createPullRequestForTicket(branchName, ticketNumber, title, prTarget);
 
     const fieldId = pkg.redmine_pr_info_field;
