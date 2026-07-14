@@ -51,17 +51,8 @@ function printSummary(ticketNumber, title, branchName, currentBranch) {
 
 /**
  * Let the user pick between targeting the current branch or the default base.
- * In resume mode the prompt is skipped and the default is used.
  */
-async function resolvePrTarget(currentBranch, defaultBaseBranch, resuming, branchName) {
-    if (resuming) {
-        info(
-            `Branch "${branchName}" is already checked out — resuming after a failed push. ` +
-            `Skipping prompts and branch creation; using default base "${defaultBaseBranch}".`
-        );
-        return defaultBaseBranch;
-    }
-
+async function resolvePrTarget(currentBranch, defaultBaseBranch) {
     if (currentBranch !== defaultBaseBranch) {
         const targetChoice = await promptChoice(
             `🎯 Target PR at "${currentBranch}" (current) or "${defaultBaseBranch}"? [c/d] (default: d) `,
@@ -80,8 +71,7 @@ async function resolvePrTarget(currentBranch, defaultBaseBranch, resuming, branc
     return defaultBaseBranch;
 }
 
-async function confirmProceed(resuming) {
-    if (resuming) return;
+async function confirmProceed() {
     const ok = await promptChoice(
         "Proceed with creating branch and PR? (y/N) ",
         input => input === "y" || input === "yes"
@@ -253,17 +243,22 @@ async function main() {
     const currentBranch = getCurrentBranch();
     printSummary(ticketNumber, title, branchName, currentBranch);
 
-    const resuming = currentBranch === branchName;
-    const prTarget = await resolvePrTarget(currentBranch, defaultBaseBranch, resuming, branchName);
-    await confirmProceed(resuming);
+    let prTarget = defaultBaseBranch;
 
-    if (!resuming) {
+    if (currentBranch === branchName) { // resuming
+        info(
+            `Branch "${branchName}" is already checked out — resuming after a failed push. ` +
+            `Skipping prompts and branch creation; using default base "${defaultBaseBranch}".`
+        );
+        ok(`Resuming on existing branch "${branchName}".`);
+        retryPushBranch(branchName);
+    } else {
+        prTarget = await resolvePrTarget(currentBranch, defaultBaseBranch);
+        await confirmProceed();
+
         checkExistingBranch(ticketNumber);
         createBranch(branchName);
         pushBranch(branchName);
-    } else {
-        ok(`Resuming on existing branch "${branchName}".`);
-        retryPushBranch(branchName);
     }
     
     const pr = await createPullRequestForTicket(branchName, ticketNumber, title, prTarget);
