@@ -2,237 +2,71 @@
 
 These components work directly inside your project directories, using standard Git plumbing and the Forgejo/Gitea APIs to manage stacked branches, PRs, and commit-history tracing entirely from the console.
 
----
+Per-tool documentation has moved to [doc/](../doc/).
+
+## Tool documentation index
+
+### Stack & PR Management
+
+| Tool | Description | Doc |
+|------|-------------|-----|
+| `fg-stack.js` | Create a stacked PR chain from a commit range | [doc/fg-stack.md](../doc/fg-stack.md) |
+| `fg-rebase.js` | Rebase an entire stacked PR chain | [doc/fg-rebase.md](../doc/fg-rebase.md) |
+| `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged | [doc/fg-retarget.md](../doc/fg-retarget.md) |
+| `fg-merge-safe.js` | Safely merge stacked PRs bottom-up | [doc/fg-merge-safe.md](../doc/fg-merge-safe.md) |
+| `fg-prs.js` | List PRs with optional conflict check | [doc/fg-prs.md](../doc/fg-prs.md) |
+
+### Commit Origin & Cache Tooling
+
+| Tool | Description | Doc |
+|------|-------------|-----|
+| `fg-cherry-cache.js` | Build/refresh the commit → patch-id → branch cache | [doc/fg-cherry-cache.md](../doc/fg-cherry-cache.md) |
+| `fg-cherry.js` | Find which branches contain a commit (offline) | [doc/fg-cherry.md](../doc/fg-cherry.md) |
+| `fg-find-commit-origin.js` | Trace commit origin across branches and PRs | [doc/fg-find-commit-origin.md](../doc/fg-find-commit-origin.md) |
+| `fg-branch-diff.js` | Compare branches by patch content | [doc/fg-branch-diff.md](../doc/fg-branch-diff.md) |
+| `fg-branch-parents.js` | Print fork-parent chain for a branch | [doc/fg-branch-parents.md](../doc/fg-branch-parents.md) |
+| `fg-sync.js` | Sync branches/tags between two repos | [doc/fg-sync.md](../doc/fg-sync.md) |
+| `gsearch.js` | Search commit messages across all branches | [doc/gsearch.md](../doc/gsearch.md) |
+
+### Redmine Integration
+
+| Tool | Description | Doc |
+|------|-------------|-----|
+| `red-commit.js` | Commit with automatic Redmine issue notes | [doc/red-commit.md](../doc/red-commit.md) |
+| `red-pr.js` | Create branch + PR from a Redmine ticket | [doc/red-pr.md](../doc/red-pr.md) |
+
+### Cache internals
+
+| Document | Description |
+|----------|-------------|
+| [doc/commit-cache.md](../doc/commit-cache.md) | Full structure, content, incremental sync, and freshness trade-offs |
+
+## Shared modules
+
+- **`utils.js`** — General-purpose utilities: logging (`fail`/`info`/`ok`), `git()` command runner, `readPackageJson()`, `sanitizeBranchName()`.
+- **`forgejo-utils.js`** — Forgejo/Gitea API primitives: `getRepoContext`, `getHeaders` (`FORGEJO_TOKEN`), `fetchAllPages`, `fetchPagesUntil`, `mapWithConcurrency`.
+- **`red-utils.js`** — Redmine API primitives: `getRedmineConfig`, `fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`. Requires `REDMINE_URL` and `REDMINE_API_KEY`.
+- **`commit-cache.js`** — The single consolidated cache module used by `fg-cherry-cache.js` (builds/refreshes it), `fg-cherry.js`, and `fg-find-commit-origin.js` (read-only consumers). See [doc/commit-cache.md](../doc/commit-cache.md) for full details.
 
 ## Environment Variables
 
-These tools require different combinations of environment variables depending on which feature they use:
-
 | Variable | Required by | Description |
-|---|---|---|
+|----------|-------------|-------------|
 | `FORGEJO_TOKEN` | All forgejo-based tools (fg-*.js, red-pr.js) | Forgejo/Gitea personal access token |
-| `REDMINE_URL` | red-pr.js, red-utils.js | Base URL of your Redmine instance (e.g. `https://redmine.example.com`) |
-| `REDMINE_API_KEY` | red-pr.js, red-utils.js | Your Redmine API key |
+| `REDMINE_URL` | red-commit.js, red-pr.js | Base URL of your Redmine instance |
+| `REDMINE_API_KEY` | red-commit.js, red-pr.js | Your Redmine API key |
 
-To set them temporarily in your current terminal session:
-
-### PowerShell (Per-Terminal Only)
+To set them temporarily (PowerShell):
 
 ```powershell
 $env:FORGEJO_TOKEN="your_secret_access_token_here"
 $env:REDMINE_URL="https://redmine.example.com"
 $env:REDMINE_API_KEY="your_redmine_api_key_here"
 ```
-* **Scope:** These only live inside this specific PowerShell window. Close the window and they're gone.
 
-### Linux / macOS (Per-Terminal Only)
+To set them temporarily (Linux/macOS):
 
 ```bash
 export FORGEJO_TOKEN="your_secret_access_token_here"
 export REDMINE_URL="https://redmine.example.com"
 export REDMINE_API_KEY="your_redmine_api_key_here"
-```
-
----
-
-## Redmine → PR Workflow
-
-### `red-pr.js`: Create a Branch + PR from a Redmine Ticket
-
-```powershell
-bun ./red-pr.js <ticket-number>
-```
-
-Reads a Redmine issue, creates a local branch `<number>-<sanitized-title>`, pushes it, and opens a Pull Request. Optionally writes branch/PR info back into a Redmine custom field.
-
-**Required env vars:** `FORGEJO_TOKEN`, `REDMINE_URL`, `REDMINE_API_KEY`
-
-**What it does:**
-
-1. **Validates** the ticket number is numeric.
-2. **Checks for existing branches** — scans both local and remote branches for any starting with `<ticketNumber>-`. **Fails with a manual-action message** if found (to prevent accidental duplicate work).
-3. **Fetches the Redmine issue** and reads its subject line.
-4. **Creates a branch** named `<ticketNumber>-<sanitized-title>` (lowercase, special chars → hyphens).
-5. **Switches to `main`** first (pulling latest via `--ff-only`), then creates and checks out the new branch.
-6. **Pushes the branch** to origin and **creates a Pull Request** on Forgejo with title `#<ticketNumber> <title>`.
-7. **Updates a Redmine custom field** — if your project's `package.json` contains a `"redmine_pr_info_field"` property with a numeric custom-field ID, it writes `branchName | PR-link` into that field on the Redmine issue.
-
-**Optional `package.json` config:**
-
-```json
-{
-  "redmine_pr_info_field": 123
-}
-```
-
-Where `123` is the numeric ID of a Redmine custom field to auto-update.
-
-#### Usage examples
-
-```powershell
-bun ./red-pr.js 12345
-bun ./red-pr.js 9999      # another ticket
-```
----
-
-## Stack & PR Management
-
-## `fg-prs.js`: Visual Inspection & Conflict Audit
-
-Provides structural visibility into your code repository layout. It maps out dependencies recursively so you can see your entire workflow tree.
-
-```powershell
-bun ./fg-prs.js
-```
-
-#### `--check` The Inline Conflict Check
-
-To run an exhaustive audit that forces the backend server to process background git diff calculations on all branches and explicitly append status indicators (`✅` / `❌`) right into the visual rendering tree nodes:
-
-```powershell
-bun ./fg-prs.js --check
-# Or use the shorthand flag:
-bun ./fg-prs.js -c
-
-```
-
----
-
-## Submitting a New Dependent Layer
-
-### File: `fg-stack.js`
-
-When you have built a new iteration layer directly on top of an unmerged feature branch locally, do not head out to your web browser to click dropdown menus. Check out your feature branch (`git checkout feature-step-3`) and execute the stack creator:
-
-```powershell
-bun ./fg-stack.js --title "Part 3: Add database validation schemas"
-
-```
-
-### What happens behind the scenes:
-
-1. **Parent Detection:** The script interrogates local git commits via `merge-base` calculations to determine which parent branch you split away from.
-2. **Remote Registration:** It issues a dynamic upstream push (`git push -u origin <current-branch>`).
-3. **Target Alignment:** It executes a REST command targeting the Forgejo server to instantly launch a new PR set up to track directly against your parent feature branch (`feature-step-3` ➔ `feature-step-2`) instead of blindly crashing into `main`.
-
----
-
-## Cascade Rebase Management
-
-### File: `fg-rebase.js`
-
-If a reviewer asks for changes on an early tier branch (e.g., `feature-step-1`), making edits will inherently drift your subsequent dependent branches out of sync.
-
-Fix the issue, commit your code on that early branch, and while sitting directly on that branch, issue the chain-reaction command:
-
-```powershell
-bun ./fg-rebase.js
-
-```
-
-### What happens behind the scenes:
-
-1. **Tree Evaluation:** It analyzes your active branch configuration, looking up the branch map to identify every higher branch layer depending on your work.
-2. **Automated Hops:** The utility checks out every branch layer step-by-step up the chain.
-3. **Clean Synchronization:** It runs a localized `git rebase` against the newly updated tier right beneath it and executes a safe `--force-with-lease` remote push to gracefully update your server PRs without risk of wiping out collaborative code modifications.
-4. **Return Home:** It returns you right back to your starting branch.
-
----
-
-## Merging & Retargeting
-
-### Files: `fg-merge-safe.js` and `fg-retarget.js`
-
-To clear out ready features across your repository stack, execute the safe merge pipeline:
-
-```powershell
-bun ./fg-merge-safe.js
-
-```
-
-### What happens behind the scenes:
-
-1. **Conflict Screening:** The utility checks merge targets, automatically bypassing blocked PRs or lines displaying raw conflicts.
-2. **Server Merging:** It closes out ready PRs down into your trunk branch one by one.
-
-`fg-merge-safe.js` does **not** automatically retarget dependent PRs. Once a lower branch (like `feature-step-1`) has been merged into `main`, any PR still targeting it (like `feature-step-2`, now stranded against a closed branch) needs its base updated. Run the companion script afterwards:
-
-```powershell
-bun ./fg-retarget.js
-
-```
-
-It scans open PRs, detects any whose base branch was already merged/closed, and PATCHes their base directly to where that branch ended up (e.g. `main`) so the stack shifts seamlessly downstream.
-
----
-
-## Commit Origin & Cache Tooling
-
-Finding "where does this commit actually live?" is hard once commits get cherry-picked or rebased between branches and PRs — the SHA changes but the diff (patch-id) doesn't. These tools share one consolidated cache — see [README.cache.md](README.cache.md) for the full structure/content/usage reference — to answer that from either direction: by branch, or by PR.
-
-### `cherry-cache.js`: THE single script that builds/refreshes the cache
-
-This is the **only** script that syncs anything. `cherry.js` and `fg-find-commit-origin.js` are pure read-only consumers of what it produces — they never call git or the Forgejo API to build the cache themselves. Run it whenever you want fresher results (e.g. after pulling new commits or PR activity).
-
-It scans `git log --all`, computes a stable patch-id for every new commit (via `git patch-id --stable`), records author/committer identity+dates for free in the same pass, and — for any commit that shares a patch-id with another (an actual cherry-pick/rebase duplicate) — resolves accurate branch membership and first-parent-path info via `git branch -a --contains`, bounded to just those duplicate groups so it stays fast even on large repos.
-
-```powershell
-bun ./cherry-cache.js
-# Skip the Forgejo API sync (offline / no token available):
-bun ./cherry-cache.js --no-prs
-# Force a full rebuild (e.g. after deleting/renaming branches):
-bun ./cherry-cache.js --rebuild
-```
-
-### `cherry.js`: Local cherry-pick / branch lookup
-
-Fast, offline lookup — no network calls, and no live `git branch --contains` calls either once the cache is populated (it reads the branch/first-parent data `cherry-cache.js` already resolved). Given a commit hash, computes its patch-id and reports every branch containing that commit or a same-diff copy of it, anywhere in history. If PR metadata is already cached, the originating PR is shown too. Requires the cache to be built first via `cherry-cache.js`.
-
-Pass an optional second argument to get a quick pass/fail summary at the end for one specific branch, so you don't have to scan a long match list by eye. When there's a match, it also traces **how and when** the patch actually entered that branch:
-
-- **Authored vs. committed timestamps** — a cherry-pick keeps the original author date but sets the committer date to whenever it was actually applied, so the gap between the two tells you when it landed.
-- **Path** — whether the commit sits directly on the branch's first-parent history (committed/cherry-picked straight onto it) or only arrived via a merge commit (some other branch already had the same patch and was merged in later — e.g. the branch was forked from a base that already contained the cherry-pick, rather than the cherry-pick happening on the branch itself).
-
-```powershell
-bun ./cherry.js <commit-hash>
-bun ./cherry.js <commit-hash> <branch-name>
-```
-
-### `fg-find-commit-origin.js`: Full branch + PR origin resolution
-
-The complete answer: combines the local patch-id cache with Forgejo PR history to resolve which branch **and/or** which PR (open or closed) a commit came from — even when it was cherry-picked or rebased into a different SHA elsewhere. Also a pure read-only consumer of the cache — run `cherry-cache.js` first.
-
-- **Direct match:** this exact SHA is one of the commits inside a known PR.
-- **Patch-id match:** every other commit sharing the identical diff is reported together, each annotated with its own branch(es) and originating PR (if any).
-
-```powershell
-bun ./fg-find-commit-origin.js <commit-hash>
-```
-
-### `gsearch.js`: Search commit messages across branches
-
-Pure git, no cache or API involved. Search by text or an exact hash, then print every local/remote branch containing each match; optionally check whether a specific branch is included.
-
-```powershell
-bun ./gsearch.js "search term" [target-branch]
-```
-
-### `fg-branch-diff.js`: Which commits are actually missing between two branches?
-
-Compares two branches by **patch content**, not just commit hash — the classic trap is a commit that was cherry-picked onto a base branch, with the newer branch forked from that base *later*: by sha alone it looks "missing" from the newer branch, but the patch is already there. Wraps `git cherry` (which already does patch-id equivalence checking internally), then enriches genuinely-missing commits with cached PR info for context.
-
-```powershell
-bun ./fg-branch-diff.js <older-branch> <newer-branch>
-```
-
-Reports two groups: commits with **no equivalent patch anywhere** in the newer branch (flagged `❌ MISSING` — these need attention), and commits already carried over via cherry-pick/rebase (`♻️`, informational only).
-
----
-
-## Shared modules
-
-- **`utils.js`** — General-purpose utilities shared across all tools: logging (`fail`/`info`/`ok`), `git()` command runner, `readPackageJson()`, `sanitizeBranchName()`.
-- **`forgejo-utils.js`** — Forgejo/Gitea API primitives: `getRepoContext`, `getHeaders` (`FORGEJO_TOKEN`), `fetchAllPages`, `fetchPagesUntil`, `mapWithConcurrency`.
-- **`red-utils.js`** — Redmine API primitives: `getRedmineConfig`, `fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`. Requires `REDMINE_URL` and `REDMINE_API_KEY`.
-- **`commit-cache.js`** — the single consolidated cache module used by `cherry-cache.js` (builds/refreshes it), `cherry.js`, and `fg-find-commit-origin.js` (read-only consumers). See [README.cache.md](README.cache.md) for full details on its structure, incremental behavior, and freshness trade-offs.
-

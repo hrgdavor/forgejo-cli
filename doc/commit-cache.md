@@ -1,6 +1,6 @@
 # Commit Cache — Structure, Content & Usage
 
-A single reference for `commit-cache.js`: the consolidated cache that backs `cherry-cache.js`, `cherry.js`, and `fg-find-commit-origin.js`.
+A single reference for `commit-cache.js`: the consolidated cache that backs `fg-cherry-cache.js`, `fg-cherry.js`, and `fg-find-commit-origin.js`.
 
 ## Where it lives
 
@@ -12,11 +12,11 @@ Stored gzip-compressed (via `Bun.gzipSync`/`Bun.gunzipSync`) to keep the file sm
 
 ## Who owns it
 
-**`cherry-cache.js` is the single script responsible for building and refreshing the cache.** It is the only place that calls `syncPatchIds`, `resolveDuplicateBranches`, and `syncPrCache`.
+**`fg-cherry-cache.js` is the single script responsible for building and refreshing the cache.** It is the only place that calls `syncPatchIds`, `resolveDuplicateBranches`, and `syncPrCache`.
 
-Every other tool (`cherry.js`, `fg-find-commit-origin.js`) is a **pure read-only consumer**: they call `loadCache()`, query it, and error out with a hint to run `bun cherry-cache.js` if it's empty. This avoids the same sync/rebuild logic being duplicated (and drifting) across multiple CLI entry points.
+Every other tool (`fg-cherry.js`, `fg-find-commit-origin.js`) is a **pure read-only consumer**: they call `loadCache()`, query it, and error out with a hint to run `bun run src/fg-cherry-cache.js` if it's empty. This avoids the same sync/rebuild logic being duplicated (and drifting) across multiple CLI entry points.
 
-The one exception is **self-healing**: if a lookup tool needs branch info for a commit that hasn't been resolved yet, it resolves it live and writes the result back into the cache (`saveCache`) so the next run — of any tool, including `cherry-cache.js` — reuses it instead of re-shelling out to git.
+The one exception is **self-healing**: if a lookup tool needs branch info for a commit that hasn't been resolved yet, it resolves it live and writes the result back into the cache (`saveCache`) so the next run — of any tool, including `fg-cherry-cache.js` — reuses it instead of re-shelling out to git.
 
 ## Top-level shape
 
@@ -58,7 +58,7 @@ Each commit entry:
 }
 ```
 
-- **`authorDate`/`committerDate`/`authorName`/`committerName`** are captured for free during the single bulk `git log --all` pass (no extra `git show` per commit). The gap between author and committer date is exactly "when a cherry-pick/rebase was actually applied", and is used by `cherry.js`'s branch-trace output.
+- **`authorDate`/`committerDate`/`authorName`/`committerName`** are captured for free during the single bulk `git log --all` pass (no extra `git show` per commit). The gap between author and committer date is exactly "when a cherry-pick/rebase was actually applied", and is used by `fg-cherry.js`'s branch-trace output.
 - **`branches`** has two possible sources, distinguished by `branchesResolved`:
   - `branchesResolved: false` (or absent) — cheap **ref decoration** (`git log --format=%D`), which only lists refs that point *exactly* at this commit. Misses ancestor/cherry-picked commits further down a branch's history. This is what every commit gets by default during bulk indexing (cheap, one git call for the whole repo).
   - `branchesResolved: true` — accurate result of `git branch -a --contains <sha>`, authoritative but expensive per-commit. Only computed for commits that are part of a **duplicate patch-id group** (`patchMap[id].length > 1`), i.e. an actual cherry-pick/rebase, since that's the only case where "which branch" is actually interesting for this tool. Bounded cost: singleton commits (the vast majority in most repos) never pay this price.
@@ -75,13 +75,13 @@ Each commit entry:
 ### `branch` — branch fork/ancestry relationships (local git, no network)
 
 - `relations["<branchA>|<branchB>"]` (key is the two branch names alphabetically sorted and `|`-joined): `{ branchA, branchB, aIsAncestorOfB, bIsAncestorOfA, mergeBase, mergeBaseDate }`, resolved via `git merge-base --is-ancestor` and `git merge-base`.
-- Answers "was branch X forked from / fully merged into branch Y?" — as opposed to the two branches merely sharing an old, unrelated common ancestor. This is what lets `cherry.js` distinguish a commit that's simply **inherited history** (reachable from both branches because one was branched from the other) from a **genuine independent cherry-pick** (a different commit hash re-applying the same patch on an unrelated branch).
-- Resolved lazily and cached indefinitely per branch pair the first time `cherry.js <hash> <branch>` is asked about it — merge-base results never change for existing commits, so there's no incremental-refresh concern here, only cache growth (one small entry per distinct branch pair ever queried).
-- `bases[branchName]`: `{ base, aheadCount, forkPoint, forkDate }` — the single nearest branch this branch was forked from, precomputed for **every** known branch (`git branch -a`) as part of the regular `cherry-cache.js` sync (not resolved on demand like `relations`). `base` is picked as the ancestor branch with the fewest commits between it and this branch's tip (`git rev-list --count base..branch`), so for `main -> DEV -> PROD` chains, `PROD`'s base resolves to `DEV`, not `main`. `base` is `null` if no other known branch is an ancestor. Only branches missing from this map get (re-)resolved on a given run — a branch's fork point doesn't change once established, so this is naturally incremental; `--rebuild` clears it for a full fresh recomputation (e.g. after branches were added/deleted/renamed).
+- Answers "was branch X forked from / fully merged into branch Y?" — as opposed to the two branches merely sharing an old, unrelated common ancestor. This is what lets `fg-cherry.js` distinguish a commit that's simply **inherited history** (reachable from both branches because one was branched from the other) from a **genuine independent cherry-pick** (a different commit hash re-applying the same patch on an unrelated branch).
+- Resolved lazily and cached indefinitely per branch pair the first time `fg-cherry.js <hash> <branch>` is asked about it — merge-base results never change for existing commits, so there's no incremental-refresh concern here, only cache growth (one small entry per distinct branch pair ever queried).
+- `bases[branchName]`: `{ base, aheadCount, forkPoint, forkDate }` — the single nearest branch this branch was forked from, precomputed for **every** known branch (`git branch -a`) as part of the regular `fg-cherry-cache.js` sync (not resolved on demand like `relations`). `base` is picked as the ancestor branch with the fewest commits between it and this branch's tip (`git rev-list --count base..branch`), so for `main -> DEV -> PROD` chains, `PROD`'s base resolves to `DEV`, not `main`. `base` is `null` if no other known branch is an ancestor. Only branches missing from this map get (re-)resolved on a given run — a branch's fork point doesn't change once established, so this is naturally incremental; `--rebuild` clears it for a full fresh recomputation (e.g. after branches were added/deleted/renamed).
 
 ## How incremental sync works
 
-Run via `bun cherry-cache.js` (see [README.fg.md](README.fg.md) for CLI flags: `--rebuild`, `--no-prs`).
+Run via `bun run src/fg-cherry-cache.js` (see CLI flags: `--rebuild`, `--no-prs`).
 
 1. **`syncPatchIds`** — diffs `git log --all` against the hashes already known in `patchMap`/`emptyCommits`. Only genuinely new commits get a `git patch-id` computed (in chunks of 100 via a single `git show | git patch-id` pipe, not one process per commit). Existing commits get their cheap decoration `branches` refreshed and author/committer fields backfilled if missing — but commits already marked `branchesResolved: true` are **never** touched by this cheap pass, since it would only make their accurate data worse.
 2. **`resolveDuplicateBranches`** — looks at every patch-id group with more than one member and resolves accurate `branches`/`firstParentBranches` for any member not yet marked `branchesResolved`. This is where the "expensive" `git branch -a --contains` calls happen, but only for actual duplicates, and only once per commit ever (until a `--rebuild`).
@@ -94,12 +94,12 @@ Because resolved branch data is treated as "settled" once computed, two situatio
 - A branch is deleted/rebased away after a commit's `branches` was cached — the stale branch name will keep showing up until a rebuild.
 - A brand-new branch is created from a point *after* an already-resolved duplicate commit, newly making that branch also contain it — won't appear until a rebuild.
 
-Run `bun cherry-cache.js --rebuild` periodically or after major branch cleanups to reset and fully re-resolve.
+Run `bun run src/fg-cherry-cache.js --rebuild` periodically or after major branch cleanups to reset and fully re-resolve.
 
 ## Consuming the cache
 
 ```js
-import { loadCache, saveCache, computePatchId, lookupPrForSha, findOrigin, traceEntryPath } from "./commit-cache.js";
+import { loadCache, saveCache, computePatchId, lookupPrForSha, findOrigin, traceEntryPath } from "../src/commit-cache.js";
 
 const cache = await loadCache();
 
@@ -115,4 +115,4 @@ const commitEntry = cache.patch.patchMap[somePatchId].find(c => c.fullHash === s
 const trace = traceEntryPath(commitEntry, "release/2026-01");
 ```
 
-Read-only tools should never call `syncPatchIds`, `resolveDuplicateBranches`, or `syncPrCache` directly — that's `cherry-cache.js`'s job. They should only call `loadCache`, the lookup helpers above, and `saveCache` if they lazily resolved something worth persisting.
+Read-only tools should never call `syncPatchIds`, `resolveDuplicateBranches`, or `syncPrCache` directly — that's `fg-cherry-cache.js`'s job. They should only call `loadCache`, the lookup helpers above, and `saveCache` if they lazily resolved something worth persisting.

@@ -1,92 +1,78 @@
 # forgejo-cli
 
+Bun scripts for Forgejo/Gitea stacked PR management, Redmine integration, and git commit history tracing.
+
 To install dependencies:
 
 ```bash
 bun install
 ```
 
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
-
-## Forgejo/Gitea Stacked PR CLI
-
-The actual CLI toolkit lives in [src/](src/) — stacked PR management, safe merging/retargeting, and commit/patch-id origin tracing against a Forgejo/Gitea server. See [src/README.fg.md](src/README.fg.md) for full usage and the commit-cache/`FORGEJO_TOKEN` setup.
-
 ---
 
-## Redmine commit helper — `src/red-commit.js`
+## CLI Tools
 
-A Bun script that combines `git commit` with optional Redmine issue notes. It automatically posts the commit message to the corresponding Redmine issue when it can determine the ticket number from the branch name or commit message.
+All tools are Bun scripts in [src/](src/). Per-tool documentation is in [doc/](doc/).
 
-### Usage
+### Forgejo/Gitea Stacked PR Toolkit
 
-```bash
-bun run src/red-commit.js <message>     # git commit + Redmine note (if branch starts with a number)
-bun run src/red-commit.js --hook         # git post-commit hook
-bun run src/red-commit.js -f             # force: push last commit to Redmine
-bun run src/red-commit.js --help         # show help
-```
+Stacked PR management, safe merging/retargeting, and commit/patch-id origin tracing against a Forgejo/Gitea server.
 
-| Mode | Description |
+| Tool | Description |
 |------|-------------|
-| **`<message>`** | Runs `git commit -m <message>`, then checks if the current branch starts with a number. If so, it posts the commit message as a note to that Redmine issue. |
-| **`--hook`** | Designed as a `post-commit` git hook. Reads the last commit message and posts it to Redmine **only if** the branch starts with a number. |
-| **`-f`** | Force mode. Reads the last commit message and looks for a ticket number in the message first (`#12345` or `12345` at the start), then falls back to the branch name. Useful for retroactively pushing commits or when the ticket reference is in the message text. |
+| `fg-stack.js` | Create a stacked PR chain from a commit range — [doc](doc/fg-stack.md) |
+| `fg-rebase.js` | Rebase an entire stacked PR chain — [doc](doc/fg-rebase.md) |
+| `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged — [doc](doc/fg-retarget.md) |
+| `fg-merge-safe.js` | Safely merge stacked PRs bottom-up — [doc](doc/fg-merge-safe.md) |
+| `fg-prs.js` | List PRs for current/stack branches with optional conflict check — [doc](doc/fg-prs.md) |
+| `fg-cherry.js` | Find which branches contain a commit (local cache, offline) — [doc](doc/fg-cherry.md) |
+| `fg-cherry-cache.js` | Build/refresh the commit → patch-id → branch cache — [doc](doc/fg-cherry-cache.md) |
+| `fg-find-commit-origin.js` | Trace commit origin across branches and PRs — [doc](doc/fg-find-commit-origin.md) |
+| `fg-branch-diff.js` | Compare branches by patch content (not just SHA) — [doc](doc/fg-branch-diff.md) |
+| `fg-branch-parents.js` | Print fork-parent chain for a branch — [doc](doc/fg-branch-parents.md) |
+| `fg-sync.js` | Sync branches/tags between two repos — [doc](doc/fg-sync.md) |
 
-### Environment variables
+### Redmine Integration
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `REDMINE_URL` | Yes | Base URL of your Redmine instance (e.g. `https://redmine.example.com`) |
-| `REDMINE_API_KEY` | Yes | Your Redmine API key |
+| Tool | Description |
+|------|-------------|
+| `red-commit.js` | Commit with automatic Redmine issue notes (also: `--hook` for post-commit, `-f` for force) — [doc](doc/red-commit.md) |
+| `red-pr.js` | Create branch + PR from a Redmine ticket — [doc](doc/red-pr.md) |
 
-### Git hook setup
+### Other Utilities
 
-#### 1. Create the hook file
+| Tool | Description |
+|------|-------------|
+| `gsearch.js` | Search commit messages across all branches — [doc](doc/gsearch.md) |
 
-Place the following in `.git/hooks/post-commit` (no file extension):
+### Shared Modules
+
+| Module | Description |
+|--------|-------------|
+| `commit-cache.js` | Consolidated cache backing `fg-cherry-cache.js`, `fg-cherry.js`, `fg-find-commit-origin.js` — [doc](doc/commit-cache.md) |
+| `forgejo-utils.js` | Forgejo/Gitea API primitives (`getRepoContext`, `getHeaders`, `fetchAllPages`, `mapWithConcurrency`) |
+| `red-utils.js` | Redmine API primitives (`fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`) |
+| `utils.js` | General-purpose utilities (`fail`/`info`/`ok` logging, `git()` runner, `readPackageJson`, `sanitizeBranchName`) |
+
+### Environment Variables
+
+| Variable | Required by | Description |
+|----------|-------------|-------------|
+| `FORGEJO_TOKEN` | All fg-* tools, red-pr.js | Forgejo/Gitea personal access token |
+| `REDMINE_URL` | red-commit.js, red-pr.js | Base URL of your Redmine instance (e.g. `https://redmine.example.com`) |
+| `REDMINE_API_KEY` | red-commit.js, red-pr.js | Your Redmine API key |
+
+To set them temporarily (PowerShell):
+
+```powershell
+$env:FORGEJO_TOKEN="your_secret_access_token_here"
+$env:REDMINE_URL="https://redmine.example.com"
+$env:REDMINE_API_KEY="your_redmine_api_key_here"
+```
+
+To set them temporarily (Linux/macOS):
 
 ```bash
-#!/usr/bin/env sh
-bun run src/red-commit.js --hook
-```
-
-> **Important:** Git always runs hooks using `/bin/sh`, regardless of the OS. On **Linux/macOS** this is handled natively. On **Windows** (Git Bash, WSL, or MSYS2), Git ships with its own POSIX-compatible shell that interprets the shebang (`#!/usr/bin/env sh`) — but only if the file has **LF line endings**.
-
-#### 2. Fix line endings for the hook file
-
-Since Windows uses CRLF by default, hook scripts with shebangs will fail with `post-commit: No such file or directory` or a cryptic error. To ensure Git always uses LF for hooks, add this to your `.gitattributes` file (create one in the repo root if it doesn't exist):
-
-```
-.git/hooks/post-commit text eol=lf
-```
-
-Alternatively, force CRLF → LF conversion manually:
-
-```bash
-git add .git/hooks/post-commit --renormalize
-```
-
-#### 3. Make the hook executable (Linux/macOS)
-
-```bash
-chmod +x .git/hooks/post-commit
-```
-
-On Windows, Git for Windows assigns executable permissions automatically when the shebang is present and line endings are LF.
-
-#### 4. Verify
-
-After setup, any `git commit` will automatically call:
-
-```
-bun run src/red-commit.js --hook
-```
-
-which reads the just-created commit and posts it to Redmine (if the branch name starts with a ticket number).
+export FORGEJO_TOKEN="your_secret_access_token_here"
+export REDMINE_URL="https://redmine.example.com"
+export REDMINE_API_KEY="your_redmine_api_key_here"
