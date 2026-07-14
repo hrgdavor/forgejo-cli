@@ -226,7 +226,7 @@ function printHelp() {
 
 function printDone(branchName, pr, fieldId) {
     console.log("");
-    console.log("🎉 All done!");
+    console.log("All done! 🎉");
     console.log(`   Branch : ${branchName}`);
     console.log(`   PR     : ${pr.html_url}`);
     if (fieldId) {
