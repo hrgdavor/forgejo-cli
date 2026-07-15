@@ -153,7 +153,7 @@ function retryPushBranch(branchName) {
 }
 
 async function createPullRequestForTicket(branchName, ticketNumber, title, prTarget) {
-    const prTitle = `#${ticketNumber} ${title}`;
+    const prTitle = `${ticketNumber} ${title}`;
     const pr = await createPullRequest(branchName, prTitle, prTarget);
     ok(`PR #${pr.number} created: ${pr.html_url}`);
     return pr;
