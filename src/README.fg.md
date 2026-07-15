@@ -43,10 +43,10 @@ Per-tool documentation has moved to [doc/](../doc/).
 
 ## Shared modules
 
-- **`utils.js`** — General-purpose utilities: logging (`fail`/`info`/`ok`), `git()` command runner, `readPackageJson()`, `sanitizeBranchName()`.
-- **`forgejo-utils.js`** — Forgejo/Gitea API primitives: `getRepoContext`, `getHeaders` (`FORGEJO_TOKEN`), `fetchAllPages`, `fetchPagesUntil`, `mapWithConcurrency`.
-- **`red-utils.js`** — Redmine API primitives: `getRedmineConfig`, `fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`. Requires `REDMINE_URL` and `REDMINE_API_KEY`.
-- **`commit-cache.js`** — The single consolidated cache module used by `fg-cherry-cache.js` (builds/refreshes it), `fg-cherry.js`, and `fg-find-commit-origin.js` (read-only consumers). See [doc/commit-cache.md](../doc/commit-cache.md) for full details.
+- **`utils.js`** - General-purpose utilities: logging (`fail`/`info`/`ok`), `git()` command runner, `readPackageJson()`, `sanitizeBranchName()`.
+- **`forgejo-utils.js`** - Forgejo/Gitea API primitives: `getRepoContext`, `getHeaders` (`FORGEJO_TOKEN`), `fetchAllPages`, `fetchPagesUntil`, `mapWithConcurrency`.
+- **`red-utils.js`** - Redmine API primitives: `getRedmineConfig`, `fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`. Requires `REDMINE_URL` and `REDMINE_API_KEY`.
+- **`commit-cache.js`** - The single consolidated cache module used by `fg-cherry-cache.js` (builds/refreshes it), `fg-cherry.js`, and `fg-find-commit-origin.js` (read-only consumers). See [doc/commit-cache.md](../doc/commit-cache.md) for full details.
 
 ## Environment Variables
 

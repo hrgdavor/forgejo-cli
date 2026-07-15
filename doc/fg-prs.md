@@ -1,4 +1,4 @@
-# List PRs — `src/fg-prs.js`
+# List PRs - `src/fg-prs.js`
 
 Provides structural visibility into your code repository layout. It maps out dependencies recursively so you can see your entire workflow tree.
 

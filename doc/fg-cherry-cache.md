@@ -1,8 +1,8 @@
-# Build/refresh commit cache — `src/fg-cherry-cache.js`
+# Build/refresh commit cache - `src/fg-cherry-cache.js`
 
-The **only** script that builds or refreshes the consolidated commit → patch-id → branch cache (`cherry-cache.js` in the source tree). `cherry.js` and `fg-find-commit-origin.js` are pure read-only consumers — they never call git or the Forgejo API to build the cache themselves. Run it whenever you want fresher results (e.g. after pulling new commits or PR activity).
+The **only** script that builds or refreshes the consolidated commit → patch-id → branch cache (`cherry-cache.js` in the source tree). `cherry.js` and `fg-find-commit-origin.js` are pure read-only consumers - they never call git or the Forgejo API to build the cache themselves. Run it whenever you want fresher results (e.g. after pulling new commits or PR activity).
 
-It scans `git log --all`, computes a stable patch-id for every new commit (via `git patch-id --stable`), records author/committer identity+dates for free, and — for any commit that shares a patch-id with another (an actual cherry-pick/rebase duplicate) — resolves accurate branch membership and first-parent-path info via `git branch -a --contains`, bounded to just those duplicate groups so it stays fast even on large repos.
+It scans `git log --all`, computes a stable patch-id for every new commit (via `git patch-id --stable`), records author/committer identity+dates for free, and - for any commit that shares a patch-id with another (an actual cherry-pick/rebase duplicate) - resolves accurate branch membership and first-parent-path info via `git branch -a --contains`, bounded to just those duplicate groups so it stays fast even on large repos.
 
 ## Usage
 

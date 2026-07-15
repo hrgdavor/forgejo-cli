@@ -23,7 +23,7 @@ function formatDuration(seconds) {
 // a lot and would otherwise sit silent (and look hung) for as long as a full
 // rebuild on a large repo/branch count takes. Fires whenever EITHER ~5% of
 // items have passed OR `minIntervalMs` has elapsed since the last line,
-// whichever comes first — so slow-but-steady work still prints regularly
+// whichever comes first - so slow-but-steady work still prints regularly
 // instead of going quiet for a whole 5% block. Each line includes elapsed
 // time, throughput, and ETA so it's possible to tell "slow" from "stuck",
 // plus an optional `detail` (e.g. the item just finished) to know exactly
@@ -44,7 +44,7 @@ function createProgressReporter(total, label, { minIntervalMs = 5000 } = {}) {
         const etaSec = rate > 0 ? (total - current) / rate : Infinity;
         const detailStr = detail ? ` (${detail})` : "";
         console.log(
-            `${label}: ${current}/${total}${detailStr} — ${formatDuration(elapsedSec)} elapsed, ${rate.toFixed(2)}/s, ETA ${formatDuration(etaSec)}`
+            `${label}: ${current}/${total}${detailStr} - ${formatDuration(elapsedSec)} elapsed, ${rate.toFixed(2)}/s, ETA ${formatDuration(etaSec)}`
         );
         lastPrintTime = now;
         lastPrintCount = current;
@@ -63,15 +63,15 @@ function createHeartbeat(label, afterMs = 5000) {
         const now = Date.now();
         if (now - start < afterMs || now - last < afterMs) return;
         last = now;
-        console.log(`   ⏱  still working — ${label}: ${current}/${total} (${formatDuration((now - start) / 1000)} elapsed)`);
+        console.log(`   ⏱  still working - ${label}: ${current}/${total} (${formatDuration((now - start) / 1000)} elapsed)`);
     };
 }
 
 // Returns an async checkpoint() function that persists the (in-progress,
 // partially-resolved) cache to disk at most once per `intervalMs`. Long
 // syncs (syncPatchIds/resolveDuplicateBranches/resolveBranchBases) call this
-// after every item so that killing/restarting the process — expected on
-// multi-hour first-time builds — resumes from the last checkpoint instead of
+// after every item so that killing/restarting the process - expected on
+// multi-hour first-time builds - resumes from the last checkpoint instead of
 // redoing everything, since all three are already incremental (they skip
 // whatever's already recorded in the cache).
 function createCheckpointer(cache, intervalMs = 30_000) {
@@ -131,7 +131,7 @@ export async function saveCache(cache) {
 /**
  * Rebuilds branch pointers and generates patch-ids for any commit reachable
  * from any local ref that hasn't been indexed yet. Author/committer identity
- * and timestamps are captured for every commit in the same `git log` pass —
+ * and timestamps are captured for every commit in the same `git log` pass -
  * they're free here, and having them cached means later "how/when did this
  * enter" lookups never need a per-commit `git show` call.
  * @returns {{newCommitsCount:number, branchUpdatesCount:number, totalHashes:number}}
@@ -163,7 +163,7 @@ export async function syncPatchIds(cache) {
 
     // Fast-update branch pointers + backfill dates for commits we already know
     // about. Commits with accurate `branchesResolved` data (from
-    // resolveDuplicateBranches()) are left untouched — this cheap decoration
+    // resolveDuplicateBranches()) are left untouched - this cheap decoration
     // snapshot is less accurate and would only regress them.
     let branchUpdatesCount = 0;
     for (const patchId in cache.patch.patchMap) {
@@ -265,7 +265,7 @@ export function computePatchId(hashOrRef) {
  * the `%D` ref-decoration used by syncPatchIds() during bulk indexing, which
  * only sees refs that point EXACTLY at a commit and misses every ancestor
  * commit further down a branch's history (the common case for older/cherry-
- * picked commits). Only use this for a handful of commits at lookup time —
+ * picked commits). Only use this for a handful of commits at lookup time -
  * it's too slow to run for every commit during a full repo sync.
  */
 export function resolveContainingBranches(fullHash) {
@@ -280,7 +280,7 @@ export function resolveContainingBranches(fullHash) {
 
 /**
  * For every patch-id group with more than one member (i.e. an actual
- * cherry-pick/rebase duplicate — the only case where "which branch" is
+ * cherry-pick/rebase duplicate - the only case where "which branch" is
  * interesting), resolves ACCURATE branch containment via `git branch -a
  * --contains` plus first-parent-path membership, and caches both on the
  * commit entry. Bounded to duplicate groups only, so it stays cheap even on
@@ -330,12 +330,12 @@ export async function resolveDuplicateBranches(cache) {
  *    applied, so the gap between the two is exactly "when it entered".
  *  - whether the commit sits on the branch's first-parent path (it was
  *    committed/cherry-picked directly onto that branch) or was only pulled in
- *    via a merge commit (some other branch already had it — e.g. that branch
+ *    via a merge commit (some other branch already had it - e.g. that branch
  *    was forked off a base which already contained the cherry-pick, and only
  *    later got merged into the branch being inspected).
  *
- * Prefers data already cached by syncPatchIds()/resolveDuplicateBranches() —
- * author/committer identity+dates and first-parent membership — falling back
+ * Prefers data already cached by syncPatchIds()/resolveDuplicateBranches() -
+ * author/committer identity+dates and first-parent membership - falling back
  * to live git calls only for whatever isn't cached yet (e.g. singleton
  * patch-id groups, which resolveDuplicateBranches() intentionally skips).
  * The merge-commit lookup (only needed when NOT on the first-parent path) is
@@ -396,15 +396,15 @@ export function lookupPrForSha(cache, sha) {
 }
 
 /**
- * Resolves (and caches) whether two branches share direct ancestry — i.e.
- * one was forked from / fully merged into the other — as opposed to having
+ * Resolves (and caches) whether two branches share direct ancestry - i.e.
+ * one was forked from / fully merged into the other - as opposed to having
  * only diverged from some much older common ancestor. This is what lets
  * tooling tell "this branch was forked from that one, so the shared commit
  * is inherited history" apart from "this is a genuine independent
  * cherry-pick that happens to have the same patch-id".
  *
  * Cached indefinitely per (branchA, branchB) pair since git never rewrites
- * merge-base history for existing commits — only re-resolved if the pair
+ * merge-base history for existing commits - only re-resolved if the pair
  * hasn't been asked about before.
  * @returns {{branchA:string, branchB:string, aIsAncestorOfB:boolean, bIsAncestorOfA:boolean, mergeBase:string|null, mergeBaseDate:string|null}}
  */
@@ -450,7 +450,7 @@ function listAllBranches() {
 }
 
 // Treats "origin/X" and "X" as the same branch (single-remote assumption
-// used throughout this codebase, e.g. cherry.js's branchMatches) — needed
+// used throughout this codebase, e.g. cherry.js's branchMatches) - needed
 // because git ref names carry the "origin/" prefix but Forgejo/Gitea PR
 // sourceBranch/targetBranch fields never do.
 function branchNamesEquivalent(a, b) {
@@ -458,13 +458,13 @@ function branchNamesEquivalent(a, b) {
 }
 
 /**
- * Looks up a branch's base via Forgejo/Gitea PR metadata (cache.pr.prs) —
+ * Looks up a branch's base via Forgejo/Gitea PR metadata (cache.pr.prs) -
  * the AUTHORITATIVE source when available, since a PR's sourceBranch and
  * targetBranch directly record what the branch was opened against, with
  * none of the ambiguity git-history-only inference has (multiple candidate
  * ancestor branches, same-commit local/remote-tracking aliases, etc).
  *
- * Prefers a merged PR (the strongest possible signal — an actual merge into
+ * Prefers a merged PR (the strongest possible signal - an actual merge into
  * that target happened); falls back to the most recently updated PR from
  * this branch if none are merged yet. Returns null if no PR at all was ever
  * opened from this branch, so the caller can fall back to the git-based
@@ -489,8 +489,8 @@ function resolveBranchBaseFromPr(cache, branch) {
 
 /**
  * Computes the nearest-ancestor base for a single branch against a known
- * list of candidate branches — O(n) git calls, not O(n²). Pure, no cache
- * mutation. FALLBACK ONLY — used when resolveBranchBaseFromPr found no PR
+ * list of candidate branches - O(n) git calls, not O(n²). Pure, no cache
+ * mutation. FALLBACK ONLY - used when resolveBranchBaseFromPr found no PR
  * to answer the question authoritatively; git history alone can't always
  * disambiguate (e.g. multiple candidate ancestor branches at the same
  * distance), so PR metadata is always preferred when it exists.
@@ -512,7 +512,7 @@ function computeSingleBranchBase(branch, branches) {
         const aheadCount = countProc.exitCode === 0 ? parseInt(countProc.stdout.toString().trim(), 10) : Infinity;
         // aheadCount === 0 means candidate points at the exact same commit as
         // branch (e.g. a local branch and its own origin/* remote-tracking
-        // ref) — that's an alias, not a fork parent, so it must never win a
+        // ref) - that's an alias, not a fork parent, so it must never win a
         // "nearest base" comparison (it would otherwise always beat a real
         // ancestor like DEV, since 0 < any positive distance).
         if (aheadCount > 0 && aheadCount < bestAheadCount) {
@@ -543,25 +543,25 @@ function computeSingleBranchBase(branch, branches) {
 
 /**
  * Precomputes, for every known branch, which other branch it was most likely
- * forked from — its "base" — so lookups (cherry.js et al.) never need a live
+ * forked from - its "base" - so lookups (cherry.js et al.) never need a live
  * git call just to answer "what's this branch's base?". Part of the regular
  * cherry-cache.js sync, not just resolved on demand.
  *
  * Forgejo/Gitea PR metadata (cache.pr.prs) is the PRIMARY source: if a PR
  * was ever opened from this branch, its sourceBranch/targetBranch is used
- * directly (see resolveBranchBaseFromPr) — no ambiguity, no git history
+ * directly (see resolveBranchBaseFromPr) - no ambiguity, no git history
  * needed. Only when no PR exists for a branch does this fall back to the
  * git merge-base heuristic (computeSingleBranchBase): every other branch
  * that's a strict ancestor of it is a candidate base, and the candidate with
- * the fewest commits between it and the branch's tip is the nearest one —
+ * the fewest commits between it and the branch's tip is the nearest one -
  * i.e. the actual fork point, not some more distant grand-ancestor (e.g. for
  * main -> DEV -> PROD, DEV is picked over main as PROD's base).
  *
  * Only branches not yet in `cache.branch.bases` are (re-)resolved, since a
- * branch's fork point relative to its base doesn't change once established —
+ * branch's fork point relative to its base doesn't change once established -
  * only truly new branches need this work on a given run.
  *
- * NOTE: the git fallback is O(n²) git calls across all branches — fine for
+ * NOTE: the git fallback is O(n²) git calls across all branches - fine for
  * a background batch sync (cherry-cache.js) but too slow to call just to
  * answer one branch's question. For that, use resolveBranchBase() instead.
  * @returns {{resolvedCount:number, totalBranches:number}}
@@ -587,7 +587,7 @@ export async function resolveBranchBases(cache) {
 }
 
 /**
- * Resolves the base for a single branch only — O(n) git calls against the
+ * Resolves the base for a single branch only - O(n) git calls against the
  * known branch list, not O(n²) across every branch (and no git calls at all
  * if a PR already answers it). Use this (not resolveBranchBases) for
  * on-demand/single-branch lookups such as fg-branch-parents.js, where
@@ -619,7 +619,7 @@ export function resolveBranchBase(cache, branch) {
  * Syncs PR metadata. Open PRs are always re-listed (they mutate: new commits
  * pushed, retargeted base, etc), but each PR's detail is only re-fetched
  * (the extra /commits API call) when its `updated_at` differs from what's
- * cached — unchanged PRs are skipped. Closed/merged PRs are immutable once
+ * cached - unchanged PRs are skipped. Closed/merged PRs are immutable once
  * closed, so they're fetched incrementally past lastUpdatedClosedPrNumber.
  */
 export async function syncPrCache(cache, forceRebuild = false) {
@@ -712,14 +712,14 @@ export async function syncPrCache(cache, forceRebuild = false) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Unified cache build/refresh — the single entry point cherry-cache.js calls
+// Unified cache build/refresh - the single entry point cherry-cache.js calls
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
  * The one function that fully updates the cache: local patch-ids + branch
  * decoration, accurate branch/first-parent resolution for cherry-pick
  * duplicate groups, and (optionally) Forgejo PR metadata. cherry-cache.js is
- * the only script that should call this — every other tool just reads what
+ * the only script that should call this - every other tool just reads what
  * it produces.
  */
 export async function updateCache(cache, { withPrs = true, forceRebuildPrs = false } = {}) {

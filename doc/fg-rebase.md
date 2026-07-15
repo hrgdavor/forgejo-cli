@@ -1,4 +1,4 @@
-# Cascade rebase — `src/fg-rebase.js`
+# Cascade rebase - `src/fg-rebase.js`
 
 If a reviewer asks for changes on an early tier branch (e.g., `feature-step-1`), making edits will inherently drift your subsequent dependent branches out of sync. Fix the issue, commit your code on that early branch, and while sitting directly on that branch, issue the chain-reaction command.
 

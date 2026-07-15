@@ -20,36 +20,36 @@ Stacked PR management, safe merging/retargeting, and commit/patch-id origin trac
 
 | Tool | Description |
 |------|-------------|
-| `fg-stack.js` | Create a stacked PR chain from a commit range — [doc](doc/fg-stack.md) |
-| `fg-rebase.js` | Rebase an entire stacked PR chain — [doc](doc/fg-rebase.md) |
-| `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged — [doc](doc/fg-retarget.md) |
-| `fg-merge-safe.js` | Safely merge stacked PRs bottom-up — [doc](doc/fg-merge-safe.md) |
-| `fg-prs.js` | List PRs for current/stack branches with optional conflict check — [doc](doc/fg-prs.md) |
-| `fg-cherry.js` | Find which branches contain a commit (local cache, offline) — [doc](doc/fg-cherry.md) |
-| `fg-cherry-cache.js` | Build/refresh the commit → patch-id → branch cache — [doc](doc/fg-cherry-cache.md) |
-| `fg-find-commit-origin.js` | Trace commit origin across branches and PRs — [doc](doc/fg-find-commit-origin.md) |
-| `fg-branch-diff.js` | Compare branches by patch content (not just SHA) — [doc](doc/fg-branch-diff.md) |
-| `fg-branch-parents.js` | Print fork-parent chain for a branch — [doc](doc/fg-branch-parents.md) |
-| `fg-sync.js` | Sync branches/tags between two repos — [doc](doc/fg-sync.md) |
+| `fg-stack.js` | Create a stacked PR chain from a commit range - [doc](doc/fg-stack.md) |
+| `fg-rebase.js` | Rebase an entire stacked PR chain - [doc](doc/fg-rebase.md) |
+| `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged - [doc](doc/fg-retarget.md) |
+| `fg-merge-safe.js` | Safely merge stacked PRs bottom-up - [doc](doc/fg-merge-safe.md) |
+| `fg-prs.js` | List PRs for current/stack branches with optional conflict check - [doc](doc/fg-prs.md) |
+| `fg-cherry.js` | Find which branches contain a commit (local cache, offline) - [doc](doc/fg-cherry.md) |
+| `fg-cherry-cache.js` | Build/refresh the commit → patch-id → branch cache - [doc](doc/fg-cherry-cache.md) |
+| `fg-find-commit-origin.js` | Trace commit origin across branches and PRs - [doc](doc/fg-find-commit-origin.md) |
+| `fg-branch-diff.js` | Compare branches by patch content (not just SHA) - [doc](doc/fg-branch-diff.md) |
+| `fg-branch-parents.js` | Print fork-parent chain for a branch - [doc](doc/fg-branch-parents.md) |
+| `fg-sync.js` | Sync branches/tags between two repos - [doc](doc/fg-sync.md) |
 
 ### Redmine Integration
 
 | Tool | Description |
 |------|-------------|
-| `red-commit.js` | Commit with automatic Redmine issue notes (also: `--hook` for post-commit, `-f` for force) — [doc](doc/red-commit.md) |
-| `red-pr.js` | Create branch + PR from a Redmine ticket — [doc](doc/red-pr.md) |
+| `red-commit.js` | Commit with automatic Redmine issue notes (also: `--hook` for post-commit, `-f` for force) - [doc](doc/red-commit.md) |
+| `red-pr.js` | Create branch + PR from a Redmine ticket - [doc](doc/red-pr.md) |
 
 ### Other Utilities
 
 | Tool | Description |
 |------|-------------|
-| `gsearch.js` | Search commit messages across all branches — [doc](doc/gsearch.md) |
+| `gsearch.js` | Search commit messages across all branches - [doc](doc/gsearch.md) |
 
 ### Shared Modules
 
 | Module | Description |
 |--------|-------------|
-| `commit-cache.js` | Consolidated cache backing `fg-cherry-cache.js`, `fg-cherry.js`, `fg-find-commit-origin.js` — [doc](doc/commit-cache.md) |
+| `commit-cache.js` | Consolidated cache backing `fg-cherry-cache.js`, `fg-cherry.js`, `fg-find-commit-origin.js` - [doc](doc/commit-cache.md) |
 | `forgejo-utils.js` | Forgejo/Gitea API primitives (`getRepoContext`, `getHeaders`, `fetchAllPages`, `mapWithConcurrency`) |
 | `red-utils.js` | Redmine API primitives (`fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`) |
 | `utils.js` | General-purpose utilities (`fail`/`info`/`ok` logging, `git()` runner, `readPackageJson`, `sanitizeBranchName`) |

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// fg-branch-parents.js — prints the fork-parent chain for a branch
+// fg-branch-parents.js - prints the fork-parent chain for a branch
 // (branch -> its base -> that base's base -> ... -> root), so the
 // `resolveBranchBase()` calculation in commit-cache.js can be sanity-checked
 // against actual git history. Also useful standalone: "what was this branch
@@ -7,7 +7,7 @@
 //
 // Pure local git, no network. Only resolves the branches actually needed for
 // this branch's chain (via resolveBranchBase), NOT the entire repo's branch
-// list — use `bun cherry-cache.js` if you want every branch precomputed.
+// list - use `bun cherry-cache.js` if you want every branch precomputed.
 //
 // Usage: bun fg-branch-parents.js <branch> [--rebuild]
 import { loadCache, saveCache, resolveBranchBase } from "./commit-cache.js";
@@ -50,11 +50,11 @@ let info = firstInfo;
 const seen = new Set([current]);
 while (true) {
     if (!info || !info.base) {
-        console.log(`  └─ (root — no known ancestor branch)`);
+        console.log(`  └─ (root - no known ancestor branch)`);
         break;
     }
     if (seen.has(info.base)) {
-        console.log(`  └─ ⚠️ cycle detected — "${info.base}" already visited, stopping.`);
+        console.log(`  └─ ⚠️ cycle detected - "${info.base}" already visited, stopping.`);
         break;
     }
     if (info.source === "pr") {

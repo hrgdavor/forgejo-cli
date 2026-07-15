@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
-// cherry-cache.js — THE single script that builds/refreshes the whole commit
+// cherry-cache.js - THE single script that builds/refreshes the whole commit
 // cache: local patch-id + branch decoration, accurate branch/first-parent
 // membership for cherry-pick duplicate groups, and Forgejo PR metadata.
 //
 // Every other tool (cherry.js, fg-find-commit-origin.js) is a pure, read-only
-// consumer of what this produces — they never sync. Run this whenever you
+// consumer of what this produces - they never sync. Run this whenever you
 // want fresher results, or on a schedule/pre-push hook.
 //
 // Flags:
@@ -39,7 +39,7 @@ console.log("🔁 Resolving cherry-pick branch containment...");
 const { resolvedCount, duplicateGroupCount } = await resolveDuplicateBranches(cache);
 
 // PR metadata must be synced BEFORE resolveBranchBases, since it's the
-// primary source resolveBranchBaseFromPr() checks first — resolving bases
+// primary source resolveBranchBaseFromPr() checks first - resolving bases
 // beforehand means every branch falls through to the (much slower) O(n²)
 // git fallback for no reason, even on repos with plenty of PR history.
 let prSyncFailed = false;
@@ -64,4 +64,4 @@ console.log(`🔄 Branch decoration updates:   ${branchUpdatesCount}`);
 console.log(`♻️  Cherry-pick groups tracked:  ${duplicateGroupCount} (${resolvedCount} commit(s) newly resolved)`);
 console.log(`🌳 Branch bases resolved:       ${newBaseBranches} new (${totalBranches} branch(es) total)`);
 if (skipPrs) console.log(`⏭️  Skipped PR sync (--no-prs)`);
-if (prSyncFailed) console.log(`⏭️  PR sync did not complete — local cache saved anyway, will retry next run.`);
+if (prSyncFailed) console.log(`⏭️  PR sync did not complete - local cache saved anyway, will retry next run.`);

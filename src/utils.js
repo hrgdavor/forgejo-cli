@@ -1,4 +1,4 @@
-// utils.js — Shared utility functions used by both forgejo-utils and red-utils
+// utils.js - Shared utility functions used by both forgejo-utils and red-utils
 //
 // Logging helpers, git command runner, package.json reader, branch name sanitizer.
 
@@ -32,7 +32,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * then falls back to walking up from this module's own location.
  */
 export function readPackageJson() {
-    // Check the working directory first — most likely where the user's project lives
+    // Check the working directory first - most likely where the user's project lives
     const cwd = process.cwd();
     const cwdPkg = join(cwd, "package.json");
     if (existsSync(cwdPkg)) {

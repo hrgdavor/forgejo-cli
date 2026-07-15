@@ -1,5 +1,5 @@
 
-# Redmine commit helper — `src/red-commit.js`
+# Redmine commit helper - `src/red-commit.js`
 
 A Bun script that combines `git commit` with optional Redmine issue notes. It automatically posts the commit message to the corresponding Redmine issue when it can determine the ticket number from the branch name or commit message.
 
@@ -36,7 +36,7 @@ Place the following in `.git/hooks/post-commit` (no file extension):
 bun run src/red-commit.js --hook
 ```
 
-> **Important:** Git always runs hooks using `/bin/sh`, regardless of the OS. On **Linux/macOS** this is handled natively. On **Windows** (Git Bash, WSL, or MSYS2), Git ships with its own POSIX-compatible shell that interprets the shebang (`#!/usr/bin/env sh`) — but only if the file has **LF line endings**.
+> **Important:** Git always runs hooks using `/bin/sh`, regardless of the OS. On **Linux/macOS** this is handled natively. On **Windows** (Git Bash, WSL, or MSYS2), Git ships with its own POSIX-compatible shell that interprets the shebang (`#!/usr/bin/env sh`) - but only if the file has **LF line endings**.
 
 ### 2. Fix line endings for the hook file
 

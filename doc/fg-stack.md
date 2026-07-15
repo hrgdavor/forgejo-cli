@@ -1,4 +1,4 @@
-# Create a stacked PR — `src/fg-stack.js`
+# Create a stacked PR - `src/fg-stack.js`
 
 When you have built a new iteration layer directly on top of an unmerged feature branch locally, check out your feature branch (`git checkout feature-step-3`) and execute the stack creator.
 

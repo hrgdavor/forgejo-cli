@@ -7,7 +7,7 @@
 //      different sha) that sits on a local branch and/or came from a PR?
 // This covers cherry-picks and rebases where the sha changes but the diff doesn't.
 //
-// Pure READ-ONLY consumer of the cache — it never syncs. Run `bun cherry-cache.js`
+// Pure READ-ONLY consumer of the cache - it never syncs. Run `bun cherry-cache.js`
 // first (and whenever you want fresher results); this tool just queries it.
 import { loadCache, saveCache, findOrigin } from "./commit-cache.js";
 
@@ -35,7 +35,7 @@ async function run() {
 
     const result = findOrigin(cache, targetInput);
     // findOrigin() may have lazily resolved accurate branches for a sibling
-    // that wasn't marked `branchesResolved` yet — persist that so future runs
+    // that wasn't marked `branchesResolved` yet - persist that so future runs
     // (and cherry-cache.js) reuse it instead of re-shelling out to git.
     await saveCache(cache);
 
@@ -49,7 +49,7 @@ function printPr(pr) {
     console.log(`   📊 State      : ${stateIcon}`);
     if (pr.mergedAt) console.log(`   📅 Merged On  : ${new Date(pr.mergedAt).toLocaleString()}`);
     console.log(`   🔗 Web Ref    : ${pr.htmlUrl}`);
-    if (pr.author) console.log(`   📝 Author/Msg : ${pr.author} — ${pr.message}`);
+    if (pr.author) console.log(`   📝 Author/Msg : ${pr.author} - ${pr.message}`);
 }
 
 function printResult(result) {

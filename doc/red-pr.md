@@ -1,4 +1,4 @@
-# Create branch + PR from Redmine ticket — `src/red-pr.js`
+# Create branch + PR from Redmine ticket - `src/red-pr.js`
 
 Reads a Redmine ticket, creates a local branch named `<number>-<sanitized-title>`, pushes it, opens a Pull Request on Forgejo/Gitea, and optionally writes the branch/PR info back into a Redmine custom field.
 

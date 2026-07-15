@@ -1,4 +1,4 @@
-# Merge stacked PRs safely — `src/fg-merge-safe.js`
+# Merge stacked PRs safely - `src/fg-merge-safe.js`
 
 To clear out ready features across your repository stack, execute the safe merge pipeline.
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
-// cherry.js — local-only lookup: which branch(es) contain this commit or a
+// cherry.js - local-only lookup: which branch(es) contain this commit or a
 // cherry-picked copy of it (same patch-id, different sha)? No network calls
 // are made, but any PR metadata already present in the cache (from a prior
 // `cherry-cache.js` run) is shown too.
 //
 // Pure READ-ONLY consumer of the cache (see cherry-cache.js for how it's
-// built) — branch membership for cherry-pick duplicates is normally already
+// built) - branch membership for cherry-pick duplicates is normally already
 // cached and accurate; this tool only falls back to live git calls for
 // commits that haven't been resolved yet, and persists the result so the
 // next run (and cherry-cache.js) don't have to redo the work.
@@ -13,8 +13,8 @@ import { loadCache, saveCache, computePatchId, resolveContainingBranches, lookup
 
 const targetHash = Bun.argv[2];
 // One branch: keeps the full deep-dive (trace, siblings, other locations).
-// Multiple branches: concise side-by-side summary — what hash (if any) is in
-// each, original vs cherry-pick, and its known base — for comparing several
+// Multiple branches: concise side-by-side summary - what hash (if any) is in
+// each, original vs cherry-pick, and its known base - for comparing several
 // branches at once (e.g. a chain of forks) without repeating the deep-dive.
 const rawExtraArgs = Bun.argv.slice(3);
 const verbose = rawExtraArgs.includes("--verbose") || rawExtraArgs.includes("-v");
@@ -71,7 +71,7 @@ const cherryPicks = matches.filter(
 function printPr(pr) {
     const stateIcon = pr.merged ? "🎉 Merged" : (pr.state === "open" ? "🟢 Open" : "❌ Closed (Unmerged)");
     console.log(`\n   Origin PR:   #${pr.prNumber} - "${pr.title}" [${stateIcon}]`);
-    console.log(`                ${pr.sourceBranch} ➔ ${pr.targetBranch} — ${pr.htmlUrl}`);
+    console.log(`                ${pr.sourceBranch} ➔ ${pr.targetBranch} - ${pr.htmlUrl}`);
 }
 
 // Does a resolved branch name match what the user asked for? Handles both
@@ -149,21 +149,21 @@ function printEntryTrace(trace, branchLabel, isCherryPick) {
     console.log(`   Authored:    ${trace.authorDate} by ${trace.authorName}`);
     console.log(`   Committed:   ${trace.committerDate} by ${trace.committerName}`);
     if (trace.authorDate !== trace.committerDate) {
-        console.log(`   ⏱️  Author/committer dates differ — this commit was applied (cherry-picked/rebased) after it was originally authored.`);
+        console.log(`   ⏱️  Author/committer dates differ - this commit was applied (cherry-picked/rebased) after it was originally authored.`);
     }
     if (isCherryPick) {
-        console.log(`   ♻️  This is a CHERRY-PICKED COPY — a different commit hash than the original, carrying the same patch. It was NOT authored on "${branchLabel}"; someone applied it there (cherry-pick/rebase) from wherever the original commit lives (see "other locations" below).`);
+        console.log(`   ♻️  This is a CHERRY-PICKED COPY - a different commit hash than the original, carrying the same patch. It was NOT authored on "${branchLabel}"; someone applied it there (cherry-pick/rebase) from wherever the original commit lives (see "other locations" below).`);
     }
 
     if (!trace.isAncestor) {
-        console.log(`   ⚠️ Not actually an ancestor of "${branchLabel}" (branch may have moved since the cache was built — try 'bun cherry-cache.js').`);
+        console.log(`   ⚠️ Not actually an ancestor of "${branchLabel}" (branch may have moved since the cache was built - try 'bun cherry-cache.js').`);
     } else if (trace.onFirstParentPath) {
         const landedVerb = isCherryPick
             ? `cherry-picked directly onto "${branchLabel}" as a new commit there (not merged in from another branch)`
             : `committed directly onto "${branchLabel}" (on its first-parent history)`;
         console.log(`   🛤️  Path: ${landedVerb}.`);
     } else if (trace.mergeCommit) {
-        console.log(`   🛤️  Path: NOT directly on "${branchLabel}" — pulled in via merge commit ${trace.mergeCommit.hash.substring(0, 7)}`);
+        console.log(`   🛤️  Path: NOT directly on "${branchLabel}" - pulled in via merge commit ${trace.mergeCommit.hash.substring(0, 7)}`);
         console.log(`             ("${trace.mergeCommit.subject}") on ${trace.mergeCommit.date}.`);
         console.log(`             → Likely: another branch already had this patch and was merged into "${branchLabel}" at that point,`);
         console.log(`               or "${branchLabel}" was forked from a base that already contained it.`);
@@ -181,12 +181,12 @@ function describeBranchRelation(rel) {
         return `"${rel.branchA}" and "${rel.branchB}" point to the exact same commit right now.`;
     }
     if (rel.aIsAncestorOfB) {
-        return `"${rel.branchB}" contains all of "${rel.branchA}"'s history — i.e. it was forked from (or has since merged) "${rel.branchA}" at ${short} (${rel.mergeBaseDate}).`;
+        return `"${rel.branchB}" contains all of "${rel.branchA}"'s history - i.e. it was forked from (or has since merged) "${rel.branchA}" at ${short} (${rel.mergeBaseDate}).`;
     }
     if (rel.bIsAncestorOfA) {
-        return `"${rel.branchA}" contains all of "${rel.branchB}"'s history — i.e. it was forked from (or has since merged) "${rel.branchB}" at ${short} (${rel.mergeBaseDate}).`;
+        return `"${rel.branchA}" contains all of "${rel.branchB}"'s history - i.e. it was forked from (or has since merged) "${rel.branchB}" at ${short} (${rel.mergeBaseDate}).`;
     }
-    return `"${rel.branchA}" and "${rel.branchB}" diverged independently — no direct fork relationship; common ancestor is ${short} (${rel.mergeBaseDate}).`;
+    return `"${rel.branchA}" and "${rel.branchB}" diverged independently - no direct fork relationship; common ancestor is ${short} (${rel.mergeBaseDate}).`;
 }
 
 // Given more than one branch argument, resolves which (if any) copy of the
@@ -212,7 +212,7 @@ function printBranchSummaryLine(result) {
     console.log(`   ✅ ${label} ${result.hash}${dateStr}  ${kind}${baseStr}`);
 }
 
-// Three or more args: multiple branches given — print a concise side-by-side
+// Three or more args: multiple branches given - print a concise side-by-side
 // summary instead of the full single-branch deep-dive (which would be too
 // repetitive/verbose across several branches).
 if (targetBranches.length > 1) {
@@ -232,7 +232,7 @@ if (targetBranch) {
     const found = allResolved.find(r => r.branches.some(b => branchMatches(b, targetBranch)));
     if (found) {
         const branchRef = found.branches.find(b => branchMatches(b, targetBranch));
-        console.log(`   ✅ MATCH — Same patch found in "${targetBranch}" via ${found.label} commit ${found.hash}`);
+        console.log(`   ✅ MATCH - Same patch found in "${targetBranch}" via ${found.label} commit ${found.hash}`);
 
         const baseInfo = cache.branch.bases?.[branchRef];
         if (baseInfo?.base) {
@@ -250,10 +250,10 @@ if (targetBranch) {
 
         // Same commit, reachable from more than one branch: that's plain
         // shared ancestry (a fork/merge relationship), never an independent
-        // cherry-pick — confirm which branch forked from which via merge-base.
+        // cherry-pick - confirm which branch forked from which via merge-base.
         // Only branches DIRECTLY related to branchRef are worth detailing;
         // e.g. many sibling branches forked off the same base as branchRef
-        // but unrelated to it are just noise — collapsed into a single count.
+        // but unrelated to it are just noise - collapsed into a single count.
         const siblingBranches = found.branches.filter(b => b !== branchRef);
         if (siblingBranches.length > 0) {
             const related = [];
@@ -272,7 +272,7 @@ if (targetBranch) {
                 related.forEach(rel => console.log(`      → ${describeBranchRelation(rel)}`));
             }
             if (unrelatedCount > 0) {
-                console.log(`   ℹ️  Also reachable from ${unrelatedCount} other branch(es) with no direct ancestry to "${branchRef}" (unrelated forks) — omitted for brevity.`);
+                console.log(`   ℹ️  Also reachable from ${unrelatedCount} other branch(es) with no direct ancestry to "${branchRef}" (unrelated forks) - omitted for brevity.`);
             }
         }
 
@@ -296,15 +296,15 @@ if (targetBranch) {
                     const branchList = o.branches.length > 0 ? o.branches.join(", ") : "no active branch (deleted/historic)";
                     console.log(`      - ${o.label} commit ${o.hash} on [ ${branchList} ]`);
                     console.log(`        → ${describeBranchRelation(rel)}`);
-                    console.log(`        ⚠️ Branches are directly related, yet this is a DIFFERENT commit hash — a real independent cherry-pick/rebase, not inherited history.`);
+                    console.log(`        ⚠️ Branches are directly related, yet this is a DIFFERENT commit hash - a real independent cherry-pick/rebase, not inherited history.`);
                 });
             }
             if (unrelatedLocationCount > 0) {
-                console.log(`   ℹ️  Same patch also exists on ${unrelatedLocationCount} other unrelated branch/commit combination(s) — omitted for brevity.`);
+                console.log(`   ℹ️  Same patch also exists on ${unrelatedLocationCount} other unrelated branch/commit combination(s) - omitted for brevity.`);
             }
         }
     } else {
-        console.log(`   ❌ NOT FOUND — No commit with this patch-id exists in "${targetBranch}"`);
+        console.log(`   ❌ NOT FOUND - No commit with this patch-id exists in "${targetBranch}"`);
     }
     console.log("=".repeat(50));
 }

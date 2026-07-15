@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
-// red-commit.js — CLI: commit with optional Redmine note
+// red-commit.js - CLI: commit with optional Redmine note
 //
 // Usage:
-//   bun run src/red-commit.js <message>         — git commit + add Redmine note if branch starts with number
-//   bun run src/red-commit.js --hook            — git hook: push last commit message as Redmine note
-//   bun run src/red-commit.js -f                — force push last commit message to Redmine (looks for ticket #
+//   bun run src/red-commit.js <message>         - git commit + add Redmine note if branch starts with number
+//   bun run src/red-commit.js --hook            - git hook: push last commit message as Redmine note
+//   bun run src/red-commit.js -f                - force push last commit message to Redmine (looks for ticket #
 //                                                 in commit message first, falls back to branch name)
 //
 // Environment variables:
@@ -112,7 +112,7 @@ async function main() {
 
     // ── Hook mode (git post-commit hook) ──────────────────────────────
     if (args[0] === "--hook") {
-        info("Running in hook mode — pushing last commit message to Redmine...");
+        info("Running in hook mode - pushing last commit message to Redmine...");
 
         // Get the last commit message
         const logResult = git(["log", "-1", "--pretty=%B"]);
@@ -134,7 +134,7 @@ async function main() {
         // Check if branch starts with a number → Redmine ticket
         const ticketId = extractTicketFromBranch(branch);
         if (!ticketId) {
-            info(`Branch "${branch}" does not start with a ticket number — skipping Redmine note.`);
+            info(`Branch "${branch}" does not start with a ticket number - skipping Redmine note.`);
             process.exit(0);
         }
 
@@ -151,7 +151,7 @@ async function main() {
 
     // ── Force mode (-f) ───────────────────────────────────────────────
     if (args[0] === "-f") {
-        info("Running in force mode — pushing last commit message to Redmine...");
+        info("Running in force mode - pushing last commit message to Redmine...");
 
         // Get the last commit message
         const logResult = git(["log", "-1", "--pretty=%B"]);
@@ -217,9 +217,9 @@ async function main() {
 
     const commitResult = git(["commit", "-m", message]);
     if (commitResult.exitCode !== 0) {
-        // Check if it's just "nothing to commit" — that's not a failure
+        // Check if it's just "nothing to commit" - that's not a failure
         if (commitResult.stderr.includes("nothing to commit")) {
-            info("Nothing to commit — working tree clean.");
+            info("Nothing to commit - working tree clean.");
         } else {
             fail(`Git commit failed: ${commitResult.stderr}`);
         }
@@ -235,7 +235,7 @@ async function main() {
             ok(`Note added to Redmine issue #${ticketId}.`);
         }
     } else {
-        info(`Branch "${branch}" does not start with a ticket number — skipping Redmine note.`);
+        info(`Branch "${branch}" does not start with a ticket number - skipping Redmine note.`);
     }
 
     process.exit(0);

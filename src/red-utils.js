@@ -1,4 +1,4 @@
-// red-utils.js — Redmine API utility functions
+// red-utils.js - Redmine API utility functions
 //
 // Exports helpers for Redmine API calls and Forgejo PR creation.
 // Shared utilities (logging, git, package.json, sanitize) live in utils.js.
@@ -105,7 +105,7 @@ export async function updateRedmineField(ticketNumber, fieldId, value) {
  * Create a Pull Request on Forgejo/Gitea.
  * Uses getRepoContext() + getHeaders() from forgejo-utils.js.
  */
-export async function createPullRequest(head, title, base = "main") {
+export async function createPullRequest(head, title, base = "main", body = "") {
     const { baseUrl, owner, repo } = getRepoContext();
     const url = `${baseUrl}/repos/${owner}/${repo}/pulls`;
     const res = await fetch(url, {
@@ -115,6 +115,7 @@ export async function createPullRequest(head, title, base = "main") {
             title,
             head,
             base,
+            body,
         }),
     });
 

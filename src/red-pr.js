@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// red-pr.js — CLI: create a branch + PR from a Redmine ticket
+// red-pr.js - CLI: create a branch + PR from a Redmine ticket
 //
 // Usage:  bun run src/red-pr.js <ticket-number>
 //
@@ -44,7 +44,7 @@ function getCurrentBranch() {
 function printSummary(ticketNumber, title, branchName, currentBranch) {
     console.log("");
     console.log(`📍 Current branch : ${currentBranch}`);
-    console.log(`🎫 Ticket         : #${ticketNumber} — ${title}`);
+    console.log(`🎫 Ticket         : #${ticketNumber} - ${title}`);
     console.log(`🌿 New branch     : ${branchName}`);
     console.log("");
 }
@@ -154,7 +154,9 @@ function retryPushBranch(branchName) {
 
 async function createPullRequestForTicket(branchName, ticketNumber, title, prTarget) {
     const prTitle = `${ticketNumber} ${title}`;
-    const pr = await createPullRequest(branchName, prTitle, prTarget);
+    const ticketUrl = `${process.env.REDMINE_URL}/issues/${ticketNumber}`;
+    const prBody = `Closes #${ticketNumber}\n\n${ticketUrl}`;
+    const pr = await createPullRequest(branchName, prTitle, prTarget, prBody);
     ok(`PR #${pr.number} created: ${pr.html_url}`);
     return pr;
 }
@@ -164,7 +166,7 @@ async function createPullRequestForTicket(branchName, ticketNumber, title, prTar
 async function updateRedminePrField(pkg, ticketNumber, branchName, pr) {
     const fieldId = pkg.redmine_pr_info_field;
     if (!fieldId) {
-        info('No "redmine_pr_info_field" found in package.json — skipping Redmine field update.');
+        info('No "redmine_pr_info_field" found in package.json - skipping Redmine field update.');
         return;
     }
 
@@ -183,7 +185,7 @@ async function updateRedminePrField(pkg, ticketNumber, branchName, pr) {
         const appended = prefix ? `${prefix} ${newEntry}` : newEntry;
         fieldValue = `${existingValue}${separator}${appended}`;
     } else {
-        // First entry — just use the new content (with optional prefix)
+        // First entry - just use the new content (with optional prefix)
         fieldValue = pkg.redmine_pr_info_text
             ? `${pkg.redmine_pr_info_text} ${newEntry}`
             : newEntry;
@@ -247,7 +249,7 @@ async function main() {
 
     if (currentBranch === branchName) { // resuming
         info(
-            `Branch "${branchName}" is already checked out — resuming after a failed push. ` +
+            `Branch "${branchName}" is already checked out - resuming after a failed push. ` +
             `Skipping prompts and branch creation; using default base "${defaultBaseBranch}".`
         );
         ok(`Resuming on existing branch "${branchName}".`);

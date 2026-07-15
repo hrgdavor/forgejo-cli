@@ -1,4 +1,4 @@
-# Sync branches — `src/fg-sync.js`
+# Sync branches - `src/fg-sync.js`
 
 Sync repositories by copying branches and tags from a source folder to a target folder.
 
