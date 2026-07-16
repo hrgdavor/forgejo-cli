@@ -12,7 +12,8 @@ import {
     fetchRedmineIssue, createPullRequest, computeBranchConfig, computeBranchName,
     validateTicketNumber, getCurrentBranch, promptChoice,
     checkExistingBranch, createBranch, pushBranch, retryPushBranch,
-    prInfoText
+    prInfoText,
+    appendRedminePrField
 } from "./red-utils.js";
 
 
