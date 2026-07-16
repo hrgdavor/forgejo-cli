@@ -139,7 +139,7 @@ async function main() {
         ok("Commit created.");
     }
 
-    await appendRedminePrField(pkg, ticketFromBranch, `Commit: ${message}`);
+    await appendRedminePrField(pkg, ticketFromBranch, `${pkg.redmine_pr_info_text} Commit: ${message}`);
 
     process.exit(0);
 }
