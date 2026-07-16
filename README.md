@@ -111,13 +111,36 @@ export REDMINE_API_KEY="your_redmine_api_key_here"
 
 ### 2. `~/.forgejo-cli.env` File
 
-Create a file at `~/.forgejo-cli.env` with `KEY=VALUE` entries, one per line. Lines starting with `#` are ignored.
+Create a file at `~/.forgejo-cli.env` with `KEY=VALUE` entries, one per line. Lines starting with `#` are ignored. **If the file doesn't exist, create it** — this is the recommended approach for GUI Git clients, since it avoids the OS vault (which can hang/freeze hooks spawned by VS Code, GitKraken, etc.).
 
 ```
 # forgejo-cli config
 FORGEJO_TOKEN=your_forgejo_token
 REDMINE_URL=https://redmine.example.com
 REDMINE_API_KEY=your_redmine_api_key
+```
+
+Create it on Linux/macOS:
+
+```bash
+cat > ~/.forgejo-cli.env <<'EOF'
+# forgejo-cli config
+FORGEJO_TOKEN=your_forgejo_token
+REDMINE_URL=https://redmine.example.com
+REDMINE_API_KEY=your_redmine_api_key
+EOF
+chmod 600 ~/.forgejo-cli.env
+```
+
+Create it on Windows (PowerShell):
+
+```powershell
+@'
+# forgejo-cli config
+FORGEJO_TOKEN=your_forgejo_token
+REDMINE_URL=https://redmine.example.com
+REDMINE_API_KEY=your_redmine_api_key
+'@ | Set-Content -Path "$HOME\.forgejo-cli.env"
 ```
 
 This file is checked after environment variables but before the OS vault.
