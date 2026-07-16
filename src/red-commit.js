@@ -4,58 +4,23 @@
 // Usage:
 //   bun run src/red-commit.js <message>         - git commit + add Redmine note if branch starts with number
 //   bun run src/red-commit.js --hook            - git hook: push last commit message as Redmine note
-//   bun run src/red-commit.js -f                - force push last commit message to Redmine (looks for ticket #
-//                                                 in commit message first, falls back to branch name)
+//   bun run src/red-commit.js -f                - force push last commit message as Redmine note for current branch
 //
 // Environment variables:
 //   REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)
 //   REDMINE_API_KEY   – Your Redmine API key
 
-import { fail, info, ok, git } from "./utils.js";
+import { appendRedminePrField, extractTicketFromBranch, getCurrentBranch, computeBranchConfig, postLastCommitMessage, promptChoice } from "./red-utils.js";
+import { fail, info, ok, getLastCommitMessage, git } from "./utils.js";
 
-// ── Redmine note helper ──────────────────────────────────────────────────────
 
-/**
- * Post a note (comment) to a Redmine issue via the REST API.
- * Uses REDMINE_URL and REDMINE_API_KEY env vars.
- */
-async function addRedmineNote(issueId, note) {
-    const baseUrl = process.env.REDMINE_URL;
-    const apiKey  = process.env.REDMINE_API_KEY;
-
-    if (!baseUrl) fail("REDMINE_URL environment variable is missing.");
-    if (!apiKey)  fail("REDMINE_API_KEY environment variable is missing.");
-
-    const url = `${baseUrl.replace(/\/+$/, "")}/issues/${issueId}.json`;
-
-    const res = await fetch(url, {
-        method: "PUT",
-        headers: {
-            "X-Redmine-API-Key": apiKey,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-        body: JSON.stringify({
-            issue: { notes: note },
-        }),
-    });
-
-    if (!res.ok) {
-        const text = await res.text();
-        console.error(`⚠️  Failed to add note to Redmine issue #${issueId}: ${res.status} ${text}`);
-        return false;
-    }
-    return true;
-}
-
-// ── Help ─────────────────────────────────────────────────────────────────────
+// - Help ─────────────────────────────────────────────────────────────────────
 
 function printHelp() {
     console.log("Usage:");
     console.log("  bun run src/red-commit.js <message>  – git commit + add Redmine note if branch starts with #");
     console.log("  bun run src/red-commit.js --hook     – git hook: push last commit message as Redmine note");
-    console.log("  bun run src/red-commit.js -f         – force: push last commit message to Redmine (looks for");
-    console.log("                                          ticket # in commit message first, falls back to branch)");
+    console.log("  bun run src/red-commit.js -f         – force: push last commit message to Redmine for current branch");
     console.log("");
     console.log("Environment variables:");
     console.log("  REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)");
@@ -63,45 +28,7 @@ function printHelp() {
     process.exit(0);
 }
 
-// ── Ticket number extraction ──────────────────────────────────────────────────
-
-/**
- * Extract the Redmine ticket number from a branch name.
- * Returns the number as a string, or null if the branch doesn't start with a number.
- *
- * Examples:
- *   12345-fix-bug     → "12345"
- *   42                → "42"
- *   main              → null
- *   feature/xyz       → null
- */
-function extractTicketFromBranch(branchName) {
-    const match = branchName.match(/^(\d+)/);
-    return match ? match[1] : null;
-}
-
-/**
- * Extract the Redmine ticket number from a commit message.
- * Looks for patterns like #12345 or 12345 at the start.
- * Returns the number as a string, or null.
- *
- * Examples:
- *   "#12345 fix bug"      → "12345"
- *   "12345 fix bug"       → "12345"
- *   "fix bug #12345"      → "12345"
- *   "fix bug"             → null
- */
-function extractTicketFromMessage(message) {
-    // Try #number pattern anywhere in the message
-    const hashMatch = message.match(/#(\d+)/);
-    if (hashMatch) return hashMatch[1];
-    // Try leading number pattern
-    const leadMatch = message.match(/^(\d+)\b/);
-    if (leadMatch) return leadMatch[1];
-    return null;
-}
-
-// ── Main ─────────────────────────────────────────────────────────────────────
+// - Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
     const args = Bun.argv.slice(2);
@@ -110,109 +37,94 @@ async function main() {
         printHelp();
     }
 
-    // ── Hook mode (git post-commit hook) ──────────────────────────────
-    if (args[0] === "--hook") {
-        info("Running in hook mode - pushing last commit message to Redmine...");
+    const branchName = getCurrentBranch();
+    const ticketFromBranch = extractTicketFromBranch(branchName);
+    const { pkg } = computeBranchConfig();
 
-        // Get the last commit message
-        const logResult = git(["log", "-1", "--pretty=%B"]);
-        if (logResult.exitCode !== 0) {
-            fail(`Failed to get last commit message: ${logResult.stderr}`);
-        }
-        const message = logResult.stdout;
-        if (!message) {
-            fail("No commit message found (empty repository?).");
-        }
-
-        // Get current branch name
-        const branchResult = git(["rev-parse", "--abbrev-ref", "HEAD"]);
-        if (branchResult.exitCode !== 0) {
-            fail(`Failed to get current branch: ${branchResult.stderr}`);
-        }
-        const branch = branchResult.stdout;
-
-        // Check if branch starts with a number → Redmine ticket
-        const ticketId = extractTicketFromBranch(branch);
-        if (!ticketId) {
-            info(`Branch "${branch}" does not start with a ticket number - skipping Redmine note.`);
-            process.exit(0);
-        }
-
-        info(`Branch "${branch}" → Redmine issue #${ticketId}`);
-        info(`Commit message: ${message.split("\n")[0]}`);
-
-        const note = `Commit: ${message}`;
-        const added = await addRedmineNote(ticketId, note);
-        if (added) {
-            ok(`Note added to Redmine issue #${ticketId}.`);
-        }
+    if (!ticketFromBranch) {
+        info(`Branch "${branchName}" does not start with a ticket number - skipping Redmine note.`);
         process.exit(0);
     }
 
-    // ── Force mode (-f) ───────────────────────────────────────────────
+    // - Hook mode (git post-commit hook) ──────────────────────────────
+    if (args[0] === "--hook") {
+        info(`Branch "${branchName}" → Redmine issue #${ticketFromBranch}`);
+        await postLastCommitMessage(pkg, ticketFromBranch, "hook");
+        process.exit(0);
+    }
+
+    // - Append mode (-a) ───────────────────────────────────────────────
+    if (args[0] === "-a") {
+        await appendRedminePrField(pkg, ticketFromBranch, args.slice(1).join(" "));
+        process.exit(0);
+    }
+
+
+    // - Force mode (-f) ───────────────────────────────────────────────
     if (args[0] === "-f") {
-        info("Running in force mode - pushing last commit message to Redmine...");
+        await postLastCommitMessage(pkg, ticketFromBranch, "force");
+        process.exit(0);
+    }
 
-        // Get the last commit message
-        const logResult = git(["log", "-1", "--pretty=%B"]);
-        if (logResult.exitCode !== 0) {
-            fail(`Failed to get last commit message: ${logResult.stderr}`);
-        }
-        const message = logResult.stdout;
-        if (!message) {
-            fail("No commit message found (empty repository?).");
-        }
+    // - Normal mode: commit + Redmine note ───────────────────
+    const message = args.join(" ");
 
-        // Get current branch name
-        const branchResult = git(["rev-parse", "--abbrev-ref", "HEAD"]);
-        if (branchResult.exitCode !== 0) {
-            fail(`Failed to get current branch: ${branchResult.stderr}`);
-        }
-        const branch = branchResult.stdout;
+    // Colors for terminal output
+    const C_GREEN = "\x1b[32m";
+    const C_YELLOW = "\x1b[33m";
+    const C_RED = "\x1b[31m";
+    const C_RESET = "\x1b[0m";
 
-        // Try to find ticket number: commit message first, then branch name
-        let ticketId = extractTicketFromMessage(message);
-        if (ticketId) {
-            info(`Found ticket #${ticketId} in commit message.`);
-        } else {
-            ticketId = extractTicketFromBranch(branch);
-            if (ticketId) {
-                info(`Found ticket #${ticketId} in branch name "${branch}".`);
+    // Show current status with git-style prefixes and colors
+    const porcelainLines = git(["status", "--porcelain"]).stdout;
+    if (porcelainLines) {
+        const lines = porcelainLines.split("\n").filter(Boolean);
+        console.log("\nChanges:");
+        lines.forEach(line => {
+            const prefix = line.slice(0, 2);
+            const file = line.slice(3);
+            // staged: M A D R C (first char not space)
+            // unstaged: same but first char is space
+            if (prefix[0] !== " " && prefix[0] !== "?" && prefix[0] !== "!") {
+                console.log(`   ${C_GREEN}${prefix}${C_RESET} ${file}`);
+            } else if (prefix[0] === "?" || prefix[0] === "!") {
+                console.log(`   ${C_RED}${prefix}${C_RESET} ${file}`);
+            } else {
+                const second = prefix[1];
+                const color = (second === "M" || second === "A") ? C_YELLOW : C_RED;
+                console.log(`   ${color}${prefix}${C_RESET} ${file}`);
+            }
+        });
+        console.log("");
+
+        // Check for unstaged changes (first char is space → not staged)
+        const unstaged = lines.filter(line => line.startsWith(" "));
+        if (unstaged.length > 0) {
+            const stageAll = await promptChoice(
+                "Stage all changes before committing? (Y/n) ",
+                input => input === "" || input === "y" || input === "yes"
+            );
+            if (stageAll) {
+                const addResult = git(["add", "-A"]);
+                if (addResult.exitCode !== 0) {
+                    fail(`Failed to stage changes: ${addResult.stderr}`);
+                }
+                ok("All changes staged.");
             }
         }
 
-        if (!ticketId) {
-            fail(`Could not find a ticket number in the commit message or branch name.`);
+        // Always ask for confirmation so the user can review what will be committed
+        const confirm = await promptChoice(
+            "Proceed with commit? (Y/n) ",
+            input => input === "" || input === "y" || input === "yes"
+        );
+        if (!confirm) {
+            info("Commit cancelled.");
+            process.exit(0);
         }
-
-        info(`Commit message: ${message.split("\n")[0]}`);
-
-        const note = `Commit: ${message}`;
-        const added = await addRedmineNote(ticketId, note);
-        if (added) {
-            ok(`Note added to Redmine issue #${ticketId}.`);
-        }
-        process.exit(0);
     }
 
-    // ── Normal mode: commit + optional Redmine note ───────────────────
-    const message = args.join(" ");
-
-    // Get current branch name
-    const branchResult = git(["rev-parse", "--abbrev-ref", "HEAD"]);
-    if (branchResult.exitCode !== 0) {
-        fail(`Failed to get current branch: ${branchResult.stderr}`);
-    }
-    const branch = branchResult.stdout;
-
-    // Check if branch starts with a number → Redmine ticket
-    const ticketId = extractTicketFromBranch(branch);
-
-    if (ticketId) {
-        info(`Branch "${branch}" → Redmine issue #${ticketId}`);
-    }
-
-    // ── Perform git commit ─────────────────────────────────────────────
+    // - Perform git commit ─────────────────────────────────────────────
     info(`Committing: ${message}`);
 
     const commitResult = git(["commit", "-m", message]);
@@ -227,16 +139,7 @@ async function main() {
         ok("Commit created.");
     }
 
-    // ── Add Redmine note if applicable ─────────────────────────────────
-    if (ticketId) {
-        const note = `Commit: ${message}`;
-        const added = await addRedmineNote(ticketId, note);
-        if (added) {
-            ok(`Note added to Redmine issue #${ticketId}.`);
-        }
-    } else {
-        info(`Branch "${branch}" does not start with a ticket number - skipping Redmine note.`);
-    }
+    await appendRedminePrField(pkg, ticketFromBranch, `Commit: ${message}`);
 
     process.exit(0);
 }

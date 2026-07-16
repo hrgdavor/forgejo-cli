@@ -7,7 +7,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-// ── logging ────────────────────────────────────────────────────────────────
+// - logging ────────────────────────────────────────────────────────────────
 
 export function fail(msg) {
     console.error(`❌ ${msg}`);
@@ -22,7 +22,7 @@ export function ok(msg) {
     console.log(`✅ ${msg}`);
 }
 
-// ── package.json reader ────────────────────────────────────────────────────
+// - package.json reader ────────────────────────────────────────────────────
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -53,7 +53,7 @@ export function readPackageJson() {
     return {};
 }
 
-// ── branch name sanitizer ──────────────────────────────────────────────────
+// - branch name sanitizer ──────────────────────────────────────────────────
 
 /**
  * Sanitize a string so it can be used as a git branch name:
@@ -70,7 +70,26 @@ export function sanitizeBranchName(str) {
         .replace(/^-+|-+$/g, "");
 }
 
-// ── git command runner ─────────────────────────────────────────────────────
+// - git helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Get the last commit message. Fails if empty or unobtainable.
+ */
+export function getLastCommitMessage() {
+    const result = spawnSync(["git", "log", "-1", "--pretty=%B"]);
+    if (result.exitCode !== 0) {
+        console.error(`❌ Failed to get last commit message: ${result.stderr.toString().trim()}`);
+        process.exit(1);
+    }
+    const msg = result.stdout.toString().trim();
+    if (!msg) {
+        console.error("❌ No commit message found (empty repository?).");
+        process.exit(1);
+    }
+    return msg;
+}
+
+// - git command runner ─────────────────────────────────────────────────────
 
 /**
  * Run a git command and return { exitCode, stdout, stderr }.
