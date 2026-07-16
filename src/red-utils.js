@@ -5,14 +5,13 @@
 
 import { fail, info, ok, readPackageJson, sanitizeBranchName, git } from "./utils.js";
 import { getRepoContext, getHeaders } from "./forgejo-utils.js";
+import { getSecret } from "./get-secret.js";
 
-// - Redmine API helpers ────────────────────────────────────────────────────
+// ── Redmine API helpers ────────────────────────────────────────────────────
 
-export function getRedmineConfig() {
-    const baseUrl = process.env.REDMINE_URL;
-    const apiKey  = process.env.REDMINE_API_KEY;
-    if (!baseUrl) fail("REDMINE_URL environment variable is missing.");
-    if (!apiKey)  fail("REDMINE_API_KEY environment variable is missing.");
+export function getRedmineConfig(gitGuiFriendly = false) {
+    const baseUrl = getSecret("redmine-url", "REDMINE_URL", true, gitGuiFriendly);
+    const apiKey  = getSecret("redmine-api-token", "REDMINE_API_KEY", true, gitGuiFriendly);
     return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
 }
 
@@ -20,8 +19,8 @@ export function getRedmineConfig() {
  * Fetch a Redmine issue by its numeric ID.
  * Returns the issue object (or fails).
  */
-export async function fetchRedmineIssue(ticketNumber) {
-    const { baseUrl, apiKey } = getRedmineConfig();
+export async function fetchRedmineIssue(ticketNumber, gitGuiFriendly = false) {
+    const { baseUrl, apiKey } = getRedmineConfig(gitGuiFriendly);
     const url = `${baseUrl}/issues/${ticketNumber}.json?include=journals`;
 
     const res = await fetch(url, {
@@ -44,8 +43,8 @@ export async function fetchRedmineIssue(ticketNumber) {
  * Get the current value of a custom field on a Redmine issue.
  * Returns the value string, or null if the field is not found or empty.
  */
-export async function getRedmineField(ticketNumber, fieldId) {
-    const { baseUrl, apiKey } = getRedmineConfig();
+export async function getRedmineField(ticketNumber, fieldId, gitGuiFriendly = false) {
+    const { baseUrl, apiKey } = getRedmineConfig(gitGuiFriendly);
     const url = `${baseUrl}/issues/${ticketNumber}.json?include=custom_fields`;
 
     const res = await fetch(url, {
@@ -69,8 +68,8 @@ export async function getRedmineField(ticketNumber, fieldId) {
 /**
  * Update a custom field on a Redmine issue.
  */
-export async function updateRedmineField(ticketNumber, fieldId, value) {
-    const { baseUrl, apiKey } = getRedmineConfig();
+export async function updateRedmineField(ticketNumber, fieldId, value, gitGuiFriendly = false) {
+    const { baseUrl, apiKey } = getRedmineConfig(gitGuiFriendly);
     const url = `${baseUrl}/issues/${ticketNumber}.json`;
 
     const body = {
@@ -131,14 +130,9 @@ export async function createPullRequest(head, title, base = "main", body = "") {
  * Post a note (comment) to a Redmine issue via the REST API.
  * Uses REDMINE_URL and REDMINE_API_KEY env vars.
  */
-export async function addRedmineNote(issueId, note) {
-    const baseUrl = process.env.REDMINE_URL;
-    const apiKey  = process.env.REDMINE_API_KEY;
-
-    if (!baseUrl) fail("REDMINE_URL environment variable is missing.");
-    if (!apiKey)  fail("REDMINE_API_KEY environment variable is missing.");
-
-    const url = `${baseUrl.replace(/\/+$/, "")}/issues/${issueId}.json`;
+export async function addRedmineNote(issueId, note, gitGuiFriendly = false) {
+    const { baseUrl, apiKey } = getRedmineConfig(gitGuiFriendly);
+    const url = `${baseUrl}/issues/${issueId}.json`;
 
     const res = await fetch(url, {
         method: "PUT",
@@ -290,21 +284,21 @@ export function prInfoText(pkg, branchName, pr) {
  * Append a note to a Redmine custom field (used by red-commit.js).
  * Falls back to adding a regular note if no pr_info_field is configured.
  */
-export async function appendRedminePrField(pkg, ticketId, note) {
+export async function appendRedminePrField(pkg, ticketId, note, gitGuiFriendly = false) {
     const fieldId = pkg.redmine_pr_info_field;
     if (!fieldId) {
-        const added = await addRedmineNote(ticketId, note);
+        const added = await addRedmineNote(ticketId, note, gitGuiFriendly);
         if (added) {
             ok(`Note added to Redmine issue #${ticketId}.`);
         }
         return;
     }
 
-    let fieldValue = await getRedmineField(ticketId, fieldId) || '';
+    let fieldValue = await getRedmineField(ticketId, fieldId, gitGuiFriendly) || '';
     if (!fieldValue.endsWith("\n")) fieldValue += "\n";
     fieldValue += note;
 
-    const updated = await updateRedmineField(ticketId, fieldId, fieldValue);
+    const updated = await updateRedmineField(ticketId, fieldId, fieldValue, gitGuiFriendly);
     if (updated) {
         ok(`Redmine custom field #${fieldId} updated.`);
     }
@@ -313,10 +307,20 @@ export async function appendRedminePrField(pkg, ticketId, note) {
 /**
  * Post the last commit message as a Redmine note.
  */
-export async function postLastCommitMessage(pkg, ticketId, label) {
+export async function postLastCommitMessage(pkg, ticketId, label, gitGuiFriendly = false) {
+    if (gitGuiFriendly) {
+        // When invoked by a GUI Git client the secret may be unavailable (env
+        // vars blanked out, OS vault skipped to avoid a hanging auth prompt).
+        // Degrade silently instead of crashing or freezing the client.
+        const cfg = getRedmineConfig(true);
+        if (!cfg.baseUrl || !cfg.apiKey) {
+            info(`Running in ${label} mode - Redmine credentials not available in this environment, skipping note.`);
+            return;
+        }
+    }
     info(`Running in ${label} mode - pushing last commit message to Redmine...`);
     const message = getLastCommitMessage();
     info(`Commit message: ${message.split("\n")[0]}`);
-    await appendRedminePrField(pkg, ticketId, `Commit: ${message}`);
+    await appendRedminePrField(pkg, ticketId, `Commit: ${message}`, gitGuiFriendly);
 }
 

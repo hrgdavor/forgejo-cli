@@ -1,27 +1,23 @@
 // forgejo-utils.js
 import { spawnSync } from "bun";
+import { getSecret } from "./get-secret.js";
 
 /**
- * Lazily reads FORGEJO_TOKEN from the environment. Only throws when actually
- * called, so scripts that never need the API (e.g. local-only git lookups)
- * can import from this module without triggering a process.exit().
+ * Lazily reads FORGEJO_TOKEN from the environment or OS vault. Only throws
+ * when actually called, so scripts that never need the API (e.g. local-only
+ * git lookups) can import from this module without triggering a process.exit().
  */
-export function getToken() {
-    const t = process.env.FORGEJO_TOKEN;
-    if (!t) {
-        console.error("❌ Error: FORGEJO_TOKEN environment variable is missing.");
-        process.exit(1);
-    }
-    return t;
+export function getToken(gitGuiFriendly = false) {
+    return getSecret("forgejo-token", "FORGEJO_TOKEN", true, gitGuiFriendly);
 }
 
 /**
  * Lazily builds the headers object using getToken(), so the token check only
  * fires when a script actually makes an API call.
  */
-export function getHeaders() {
+export function getHeaders(gitGuiFriendly = false) {
     return {
-        "Authorization": `token ${getToken()}`,
+        "Authorization": `token ${getToken(gitGuiFriendly)}`,
         "Content-Type": "application/json",
         "Accept": "application/json"
     };

@@ -12,8 +12,7 @@ import {
     fetchRedmineIssue, createPullRequest, computeBranchConfig, computeBranchName,
     validateTicketNumber, getCurrentBranch, promptChoice,
     checkExistingBranch, createBranch, pushBranch, retryPushBranch,
-    prInfoText,
-    appendRedminePrField
+    prInfoText, appendRedminePrField, getRedmineConfig
 } from "./red-utils.js";
 
 
@@ -22,10 +21,19 @@ import {
 function printHelp() {
     console.log("Usage: bun run src/red-pr.js <ticket-number>");
     console.log("");
-    console.log("Environment variables:");
+    console.log("Secrets (env var → ~/.forgejo-cli.env → OS vault):");
     console.log("  REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)");
     console.log("  REDMINE_API_KEY   – Your Redmine API key");
     console.log("  FORGEJO_TOKEN     – Forgejo/Gitea personal access token");
+    console.log("");
+    console.log("To provide secrets:");
+    console.log("  1. Export them as environment variables");
+    console.log("  2. Add to ~/.forgejo-cli.env (KEY=VALUE, one per line)");
+    console.log("  3. Store in your OS vault:");
+    console.log('       Windows: cmdkey /generic:SERVICE_NAME /user:%USERNAME% /pass:YOUR_TOKEN');
+    console.log('       macOS:   security add-generic-password -a "$USER" -s SERVICE_NAME -w YOUR_TOKEN');
+    console.log('       Linux:   secret-tool store --label="SERVICE_NAME" service SERVICE_NAME username "$USER"');
+    console.log('     Service names: redmine-url, redmine-api-token, forgejo-token');
     console.log("");
     console.log("Optional package.json properties:");
     console.log('  "redmine_pr_info_field"              – numeric ID of a Redmine custom field to update with branch/PR info');
@@ -102,7 +110,7 @@ async function main() {
     }
     
     const prTitle = `${ticketNumber} ${title}`;
-    const ticketUrl = `${process.env.REDMINE_URL}/issues/${ticketNumber}`;
+    const ticketUrl = `${getRedmineConfig().baseUrl}/issues/${ticketNumber}`;
     const prBody = `Closes #${ticketNumber}\n\n${ticketUrl}`;
     const pr = await createPullRequest(branchName, prTitle, prTarget, prBody);
     ok(`PR #${pr.number} created: ${pr.html_url}`);

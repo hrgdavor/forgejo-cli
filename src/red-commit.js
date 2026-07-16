@@ -22,9 +22,18 @@ function printHelp() {
     console.log("  bun run src/red-commit.js --hook     – git hook: push last commit message as Redmine note");
     console.log("  bun run src/red-commit.js -f         – force: push last commit message to Redmine for current branch");
     console.log("");
-    console.log("Environment variables:");
+    console.log("Secrets (env var → ~/.forgejo-cli.env → OS vault):");
     console.log("  REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)");
     console.log("  REDMINE_API_KEY   – Your Redmine API key");
+    console.log("");
+    console.log("To provide secrets:");
+    console.log("  1. Export them as environment variables");
+    console.log("  2. Add to ~/.forgejo-cli.env (KEY=VALUE, one per line)");
+    console.log("  3. Store in your OS vault:");
+    console.log('       Windows: cmdkey /generic:SERVICE_NAME /user:%USERNAME% /pass:YOUR_TOKEN');
+    console.log('       macOS:   security add-generic-password -a "$USER" -s SERVICE_NAME -w YOUR_TOKEN');
+    console.log('       Linux:   secret-tool store --label="SERVICE_NAME" service SERVICE_NAME username "$USER"');
+    console.log('     Service names: redmine-url, redmine-api-token');
     process.exit(0);
 }
 
@@ -49,7 +58,7 @@ async function main() {
     // - Hook mode (git post-commit hook) ──────────────────────────────
     if (args[0] === "--hook") {
         info(`Branch "${branchName}" → Redmine issue #${ticketFromBranch}`);
-        await postLastCommitMessage(pkg, ticketFromBranch, "hook");
+        await postLastCommitMessage(pkg, ticketFromBranch, "hook", true);
         process.exit(0);
     }
 
@@ -139,7 +148,7 @@ async function main() {
         ok("Commit created.");
     }
 
-    await appendRedminePrField(pkg, ticketFromBranch, `${pkg.redmine_pr_info_text} Commit: ${message}`);
+    await appendRedminePrField(pkg, ticketFromBranch, `Commit: ${message}`);
 
     process.exit(0);
 }
