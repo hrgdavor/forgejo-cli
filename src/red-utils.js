@@ -61,7 +61,6 @@ export async function getRedmineField(ticketNumber, fieldId) {
     }
 
     const data = await res.json();
-    console.log(data.issue.custom_fields)
     const fields = data.issue.custom_fields || [];
     const field = fields.find(f => f.id == fieldId);
     return field ? field.value : null;
