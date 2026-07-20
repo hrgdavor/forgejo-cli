@@ -102,3 +102,32 @@ export function git(args) {
         stderr: result.stderr.toString().trim(),
     };
 }
+
+
+/**
+ * Opens a URL in the user's default system browser using Bun.spawn.
+ * @param url The full URL string to open (e.g., "https://bun.sh")
+ */
+export function openBrowser(url) {
+  let cmd;
+
+  switch (process.platform) {
+    case "darwin":
+      cmd = ["open", url];
+      break;
+    case "win32":
+      // Windows needs cmd.exe because 'start' is a shell built-in, not a standalone binary
+      cmd = ["cmd.exe", "/c", "start", "", url];
+      break;
+    default:
+      // Fallback for Linux and other Unix-like systems
+      cmd = ["xdg-open", url];
+      break;
+  }
+
+  // Spawn the background process cleanly without blocking the event loop
+  spawnSync(cmd, {
+    stdout: "ignore",
+    stderr: "ignore",
+  });
+}

@@ -3,7 +3,7 @@
 // Exports helpers for Redmine API calls and Forgejo PR creation.
 // Shared utilities (logging, git, package.json, sanitize) live in utils.js.
 
-import { fail, info, ok, readPackageJson, sanitizeBranchName, git } from "./utils.js";
+import { fail, info, ok, readPackageJson, sanitizeBranchName, getLastCommitMessage, git } from "./utils.js";
 import { getRepoContext, getHeaders } from "./forgejo-utils.js";
 import { getSecret } from "./get-secret.js";
 
@@ -307,7 +307,7 @@ export async function appendRedminePrField(pkg, ticketId, note, gitGuiFriendly =
 /**
  * Post the last commit message as a Redmine note.
  */
-export async function postLastCommitMessage(pkg, ticketId, label, gitGuiFriendly = false) {
+export async function postLastCommitMessage(ticketId, label, gitGuiFriendly = false) {
     if (gitGuiFriendly) {
         // When invoked by a GUI Git client the secret may be unavailable (env
         // vars blanked out, OS vault skipped to avoid a hanging auth prompt).
@@ -321,6 +321,6 @@ export async function postLastCommitMessage(pkg, ticketId, label, gitGuiFriendly
     info(`Running in ${label} mode - pushing last commit message to Redmine...`);
     const message = getLastCommitMessage();
     info(`Commit message: ${message.split("\n")[0]}`);
-    await appendRedminePrField(pkg, ticketId, `Commit: ${message}`, gitGuiFriendly);
+    await addRedmineNote(ticketId, `Commit: ${message}`, gitGuiFriendly);
 }
 
