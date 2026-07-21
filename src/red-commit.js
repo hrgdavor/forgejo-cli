@@ -10,7 +10,7 @@
 //   REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)
 //   REDMINE_API_KEY   – Your Redmine API key
 
-import { appendRedminePrField, extractTicketFromBranch, getCurrentBranch, computeBranchConfig, postLastCommitMessage, promptChoice, addRedmineNote } from "./red-utils.js";
+import { appendRedminePrField, extractTicketFromBranch, getCurrentBranch, computeBranchConfig, postLastCommitMessage, promptChoice, addRedmineNote, prepCommitMsg } from "./red-utils.js";
 import { fail, info, ok, git } from "./utils.js";
 
 
@@ -58,20 +58,20 @@ async function main() {
     // - Hook mode (git post-commit hook) ──────────────────────────────
     if (args[0] === "--hook") {
         info(`Branch "${branchName}" → Redmine issue #${ticketFromBranch}`);
-        await addRedmineNote(ticketFromBranch, "hook", true);
+        await postLastCommitMessage(pkg, ticketFromBranch, "hook", true);
         process.exit(0);
     }
 
     // - Append mode (-a) ───────────────────────────────────────────────
     if (args[0] === "-a") {
-        await addRedmineNote(ticketFromBranch, args.slice(1).join(" "));
+        await addRedmineNote(ticketFromBranch, prepCommitMsg(pkg, args.slice(1).join(" ")));
         process.exit(0);
     }
 
 
     // - Force mode (-f) ───────────────────────────────────────────────
     if (args[0] === "-f") {
-        await postLastCommitMessage(ticketFromBranch, "force");
+        await postLastCommitMessage(pkg, ticketFromBranch, "force");
         process.exit(0);
     }
 
@@ -148,7 +148,7 @@ async function main() {
         ok("Commit created.");
     }
 
-    await addRedmineNote(ticketFromBranch, `Commit: ${message}`);
+    await addRedmineNote(ticketFromBranch, prepCommitMsg(pkg, message));
 
     process.exit(0);
 }

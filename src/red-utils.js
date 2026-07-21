@@ -170,6 +170,17 @@ export function extractTicketFromBranch(branchName) {
     return match ? match[1] : null;
 }
 
+/** Add prefix to commit message if configured in package.json redmine_pr_info_text
+ * 
+ * @param {object} pgk 
+ * @param {string} message 
+ * @returns {string} 
+ */
+export function prepCommitMsg(pkg, message){
+    const wtihPrefix = pkg.redmine_pr_info_text ? (redmine_pr_info_text + ' ' + message) : message
+    return 'Commit: ' + wtihPrefix
+}
+
 /**
  * Extract the Redmine ticket number from a commit message.
  * Looks for patterns like #12345 or 12345 at the start.
@@ -307,7 +318,7 @@ export async function appendRedminePrField(pkg, ticketId, note, gitGuiFriendly =
 /**
  * Post the last commit message as a Redmine note.
  */
-export async function postLastCommitMessage(ticketId, label, gitGuiFriendly = false) {
+export async function postLastCommitMessage(pkg, ticketId, label, gitGuiFriendly = false) {
     if (gitGuiFriendly) {
         // When invoked by a GUI Git client the secret may be unavailable (env
         // vars blanked out, OS vault skipped to avoid a hanging auth prompt).
@@ -321,6 +332,6 @@ export async function postLastCommitMessage(ticketId, label, gitGuiFriendly = fa
     info(`Running in ${label} mode - pushing last commit message to Redmine...`);
     const message = getLastCommitMessage();
     info(`Commit message: ${message.split("\n")[0]}`);
-    await addRedmineNote(ticketId, `Commit: ${message}`, gitGuiFriendly);
+    await addRedmineNote(ticketId, prepCommitMsg(pkg, message), gitGuiFriendly);
 }
 
