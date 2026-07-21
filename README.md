@@ -23,7 +23,7 @@ Stacked PR management, safe merging/retargeting, and commit/patch-id origin trac
 | `fg-stack.js` | Create a stacked PR chain from a commit range - [doc](doc/fg-stack.md) |
 | `fg-rebase.js` | Rebase an entire stacked PR chain - [doc](doc/fg-rebase.md) |
 | `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged - [doc](doc/fg-retarget.md) |
-| `fg-merge-safe.js` | Safely merge stacked PRs bottom-up - [doc](doc/fg-merge-safe.md) |
+| `fg-align.js` | Align PR branches with their base (rebase if no conflicts) - [doc](doc/fg-align.md) |
 | `fg-prs.js` | List PRs for current/stack branches with optional conflict check - [doc](doc/fg-prs.md) |
 | `fg-cherry.js` | Find which branches contain a commit (local cache, offline) - [doc](doc/fg-cherry.md) |
 | `fg-cherry-cache.js` | Build/refresh the commit → patch-id → branch cache - [doc](doc/fg-cherry-cache.md) |

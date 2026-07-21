@@ -8,6 +8,20 @@ const { baseUrl, owner, repo } = getRepoContext();
 const args = Bun.argv.slice(2);
 const shouldCheckConflicts = args.includes("--check") || args.includes("-c");
 
+if (args.includes("--help") || args.includes("-h")) {
+    console.log("Usage:");
+    console.log("  bun run src/fg-prs.js              – list open PRs in branch hierarchy tree");
+    console.log("  bun run src/fg-prs.js --check      – append ✅ mergeable / ❌ conflict status");
+    console.log("  bun run src/fg-prs.js --help       – show this help message");
+    console.log("");
+    console.log("Flags:");
+    console.log("  --check, -c    Check mergeable state via API (slower, hits each PR endpoint)");
+    console.log("");
+    console.log("Environment variables:");
+    console.log("  FORGEJO_TOKEN  – Forgejo/Gitea personal access token");
+    process.exit(0);
+}
+
 async function listPRsTree() {
     console.log(`🔍 Fetching open PRs for ${owner}/${repo}...`);
     try {

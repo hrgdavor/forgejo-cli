@@ -13,7 +13,7 @@ Per-tool documentation has moved to [doc/](../doc/).
 | `fg-stack.js` | Create a stacked PR chain from a commit range | [doc/fg-stack.md](../doc/fg-stack.md) |
 | `fg-rebase.js` | Rebase an entire stacked PR chain | [doc/fg-rebase.md](../doc/fg-rebase.md) |
 | `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged | [doc/fg-retarget.md](../doc/fg-retarget.md) |
-| `fg-merge-safe.js` | Safely merge stacked PRs bottom-up | [doc/fg-merge-safe.md](../doc/fg-merge-safe.md) |
+| `fg-align.js` | Align PR branches with their base (rebase if no conflicts) | [doc/fg-align.md](../doc/fg-align.md) |
 | `fg-prs.js` | List PRs with optional conflict check | [doc/fg-prs.md](../doc/fg-prs.md) |
 
 ### Commit Origin & Cache Tooling

@@ -1,6 +1,6 @@
 # Retarget stacked PRs - `src/fg-retarget.js`
 
-`fg-merge-safe.js` does **not** automatically retarget dependent PRs. Once a lower branch (like `feature-step-1`) has been merged into `main`, any PR still targeting it (like `feature-step-2`, now stranded against a closed branch) needs its base updated. Run the companion script afterwards.
+`fg-align.js` does **not** automatically retarget dependent PRs. Once a lower branch (like `feature-step-1`) has been merged into `main`, any PR still targeting it (like `feature-step-2`, now stranded against a closed branch) needs its base updated. Run the companion script afterwards.
 
 ## Usage
 
