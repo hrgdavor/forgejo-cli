@@ -177,7 +177,7 @@ export function extractTicketFromBranch(branchName) {
  * @returns {string} 
  */
 export function prepCommitMsg(pkg, message){
-    const wtihPrefix = pkg.redmine_pr_info_text ? (redmine_pr_info_text + ' ' + message) : message
+    const wtihPrefix = pkg.redmine_pr_info_text ? (pkg.redmine_pr_info_text + ' ' + message) : message
     return 'Commit: ' + wtihPrefix
 }
 
