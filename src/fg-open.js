@@ -59,7 +59,6 @@ async function main() {
 
     const { baseUrl, owner, repo } = getRepoContext();
 
-    info(`Searching for PR on branch "${branchName}"...`);
     let prUrl = null;
 
     // Fast path: if this is the default base branch, it's definitely not a PR
@@ -72,8 +71,9 @@ async function main() {
         } catch (_) {}
     }
     if (defaultBaseBranch && branchName === defaultBaseBranch) {
-        info(`Branch "${branchName}" is the default base branch — no PR possible.`);
+        info(`Branch "${branchName}" is the default base branch — opening directly.`);
     } else {
+        info(`Searching for PR on branch "${branchName}"...`);
         const ticketMatch = branchName.match(/^(\d+)/);
         const ticketNumber = ticketMatch ? ticketMatch[1] : null;
 
