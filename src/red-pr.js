@@ -8,6 +8,7 @@
 // into a Redmine custom field configured via package.json → "redmine_pr_info_field".
 
 import { fail, info, ok } from "./utils.js";
+import { truncateAtWordBoundary } from "./util/general/truncateAtWordBoundary.js";
 import {
     fetchRedmineIssue, createPullRequest, computeBranchConfig, computeBranchName,
     validateTicketNumber, getCurrentBranch, promptChoice,
@@ -39,6 +40,7 @@ function printHelp() {
     console.log('  "redmine_pr_info_field"              – numeric ID of a Redmine custom field to update with branch/PR info');
     console.log('  "redmine_pr_info_text"               – optional text prefix for each new entry (e.g. "[PR]")');
     console.log('  "redmine_pr_default_base_branch"     – default target branch for the PR (default: "main")');
+    console.log('  "redmine_pr_title_max"               – max PR title length, cuts at word boundaries (default: 80)');
     process.exit(0);
 }
 
@@ -109,7 +111,8 @@ async function main() {
         pushBranch(branchName);
     }
     
-    const prTitle = `${ticketNumber} ${title}`;
+    const maxTitleLen = pkg.redmine_pr_title_max || 80;
+    const prTitle = truncateAtWordBoundary(`${ticketNumber} ${title}`, maxTitleLen);
     const ticketUrl = `${getRedmineConfig().baseUrl}/issues/${ticketNumber}`;
     const prBody = `Closes #${ticketNumber}\n\n${ticketUrl}`;
     const pr = await createPullRequest(branchName, prTitle, prTarget, prBody);

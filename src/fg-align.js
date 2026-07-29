@@ -172,8 +172,10 @@ async function main() {
             const icon = statusIcon(details);
             const state = details.mergeable_state || (details.mergeable ? "clean" : "blocked");
             const behindCount = getBehindCount(details.base.ref, details.head.ref);
-            const behindInfo = behindCount !== null && behindCount > 0 ? `, behind: ${behindCount}` : "";
-            console.log(`${icon} #${pr.number}  ${pr.head.ref} : ${pr.title}  [${state}${behindInfo}]`);
+            const behindInfo = behindCount !== null ? (behindCount > 0 ? `📉 behind by ${behindCount}` : `✅ up to date`) : "";
+            const author = details.user ? details.user.login : "unknown";
+            const updated = details.updated_at ? new Date(details.updated_at).toLocaleString() : "";
+            console.log(`${icon} ${author} |  ${updated}  |  [${state}] ${behindInfo} | ${pr.title}`);
         });
         process.exit(0);
     }
@@ -238,8 +240,6 @@ main().catch(err => {
     console.error("❌ Error running script:", err.message);
     process.exit(1);
 });
-
-
 
 
 
