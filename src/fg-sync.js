@@ -1,30 +1,52 @@
-import { join } from "path";
+import { resolve, join } from "path";
 import { existsSync } from "fs";
+import { spawnSync } from "bun";
 
 // 1. Parse command line arguments
-const [sourceDir, targetDir] = Bun.argv.slice(2);
+const [sourceDir, targetDir, mode] = Bun.argv.slice(2);
+
+if (sourceDir === "-h" || sourceDir === "--help") {
+  console.log(`
+${"fg-sync".bold} — sync branches between two local git repositories
+
+USAGE
+  bun run src/fg-sync.js <source-folder> <target-folder> [commit]
+
+MODES
+  (default)   Only list missing commits found in source but not in target.
+  commit      Cherry-pick the missing commits from source into target.
+
+EXAMPLES
+  bun run src/fg-sync.js ../repoA ../repoB
+  bun run src/fg-sync.js ../repoA ../repoB commit
+`);
+  process.exit(0);
+}
 
 if (!sourceDir || !targetDir) {
-  console.error("❌ Usage: bun run sync-repos.js <source-folder> <target-folder>");
+  console.error("❌ Usage: bun run src/fg-sync.js <source-folder> <target-folder> [commit]");
   process.exit(1);
 }
 
-// 2. Validate folders
-const srcPath = join(process.cwd(), sourceDir);
-const tgtPath = join(process.cwd(), targetDir);
+// 2. Resolve paths
+const srcPath = resolve(sourceDir);
+const tgtPath = resolve(targetDir);
 
 if (!existsSync(join(srcPath, ".git")) || !existsSync(join(tgtPath, ".git"))) {
   console.error("❌ Both folders must be valid Git repositories (containing a .git folder).");
   process.exit(1);
 }
 
-// Helper to run shell commands in a specific folder
-async function runCmd(cmd, cwd) {
-  const proc = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  await proc.exited;
-  return { success: proc.exitCode === 0, stdout: stdout.trim(), stderr: stderr.trim() };
+// Helper — run git in a specific repo directory
+function gitDir(repoPath) {
+  return (args) => {
+    const result = spawnSync(["git", ...args], { cwd: repoPath });
+    return {
+      exitCode: result.exitCode,
+      stdout: result.stdout.toString().trim(),
+      stderr: result.stderr.toString().trim(),
+    };
+  };
 }
 
 async function main() {
@@ -32,40 +54,88 @@ async function main() {
   console.log(`Source: ${srcPath}`);
   console.log(`Target: ${tgtPath}\n`);
 
+  const srcGit = gitDir(srcPath);
+  const tgtGit = gitDir(tgtPath);
+
+  // Get current active branch names
+  const srcBrResult = srcGit(["branch", "--show-current"]);
+  const tgtBrResult = tgtGit(["branch", "--show-current"]);
+
+  const srcBranch = srcBrResult.stdout || "HEAD";
+  const tgtBranch = tgtBrResult.stdout || "HEAD";
+
+  console.log(`Source: ${srcBranch}`);
+  console.log(`Target: ${tgtBranch}\n`);
+
   const remoteName = "temp_sync_source";
 
-  // Remove if it accidentally exists from a previous crashed run
-  await runCmd(["git", "remote", "remove", remoteName], tgtPath);
+  // Clean up any stale remote
+  tgtGit(["remote", "remove", remoteName]);
 
-  // Add local folder as a remote and fetch
-  await runCmd(["git", "remote", "add", remoteName, srcPath], tgtPath);
-  await runCmd(["git", "fetch", remoteName], tgtPath);
-
-  // Get current active branches
-  const { stdout: srcBranch } = await runCmd(["git", "branch", "--show-current"], srcPath);
-  const { stdout: tgtBranch } = await runCmd(["git", "branch", "--show-current"], tgtPath);
-
-  // Identify missing commits (ignores matching patches even if hashes differ)
-  const logFormat = "%H||%s";
-  const { success, stdout, stderr } = await runCmd(
-    ["git", "log", `${tgtBranch}...${remoteName}/${srcBranch}`, `--right-only`, `--cherry-pick`, `--oneline`, `--format=${logFormat}`],
-    tgtPath
-  );
-
-  if (!success) {
-    console.error("❌ Error comparing repositories:", stderr);
-    await runCmd(["git", "remote", "remove", remoteName], tgtPath);
+  // Add source as local remote (use forward slashes for git on Windows)
+  const srcPathGit = srcPath.replace(/\\/g, "/");
+  const remoteAdd = tgtGit(["remote", "add", remoteName, srcPathGit]);
+  if (remoteAdd.exitCode !== 0) {
+    console.error("❌ Error adding remote:", remoteAdd.stderr);
     process.exit(1);
   }
 
-  const missingCommits = stdout ? stdout.split("\n").map(line => {
-    const [hash, msg] = line.split("||");
-    return { hash, msg };
-  }).reverse() : []; // Reverse to apply oldest first
+  // Fetch everything from the source remote
+  console.log(`Fetching from ${srcPathGit}...`);
+  const fetchResult = tgtGit(["fetch", remoteName]);
+  if (fetchResult.exitCode !== 0) {
+    console.error("❌ Error fetching from source:", fetchResult.stderr);
+    tgtGit(["remote", "remove", remoteName]);
+    process.exit(1);
+  }
+
+  // Resolve source tip from the fetched remote tracking ref
+  const srcRev = tgtGit(["rev-parse", `${remoteName}/${srcBranch}`]);
+  if (srcRev.exitCode !== 0) {
+    console.error("❌ Cannot resolve source branch after fetch.");
+    tgtGit(["remote", "remove", remoteName]);
+    process.exit(1);
+  }
+  const srcTip = srcRev.stdout;
+
+  // Resolve target tip (may fail if branch has no commits yet)
+  const tgtRev = tgtGit(["rev-parse", tgtBranch]);
+  const tgtTip = tgtRev.exitCode === 0 ? tgtRev.stdout : null;
+
+  console.log(`Source tip: ${srcTip.substring(0, 7)}`);
+  console.log(`Target tip: ${tgtTip ? tgtTip.substring(0, 7) : "(no commits)"}\n`);
+
+  // List missing commits: commits in source that are NOT in target
+  // Use hashes, not branch names, to avoid ambiguous argument errors
+  let logResult;
+  if (tgtTip) {
+    // Both sides have commits — use cherry-pick to skip equivalent patches
+    logResult = tgtGit(
+      ["log", `${tgtTip}...${srcTip}`, "--right-only", "--cherry-pick", "--oneline", "--format=%H||%s"]
+    );
+  } else {
+    // Target branch has no commits — all source commits are missing
+    logResult = tgtGit(
+      ["log", srcTip, "--oneline", "--format=%H||%s"]
+    );
+  }
+
+  if (logResult.exitCode !== 0) {
+    console.error("❌ Error comparing repositories:", logResult.stderr);
+    tgtGit(["remote", "remove", remoteName]);
+    process.exit(1);
+  }
+
+  const missingCommits = logResult.stdout
+    ? logResult.stdout.split("\n").map(line => {
+        const [hash, msg] = line.split("||");
+        return { hash, msg };
+      }).reverse()
+    : [];
 
   if (missingCommits.length === 0) {
     console.log("✅ Target folder is completely up to date! No missing commits found.");
-    await runCmd(["git", "remote", "remove", remoteName], tgtPath);
+    tgtGit(["remote", "remove", remoteName]);
     return;
   }
 
@@ -74,37 +144,27 @@ async function main() {
     console.log(`  [${idx + 1}] \x1b[33m${c.hash.substring(0, 7)}\x1b[0m - ${c.msg}`);
   });
 
-  // Interactive prompt using Bun's native stdin stream reader
-  console.write("\nDo you want to copy these commits to the target folder? (y/n): ");
-  for await (const line of Bun.stdin.stream()) {
-    const input = new TextDecoder().decode(line).trim().toLowerCase();
+  if (mode === "commit") {
+    console.log("\n🚀 Starting cherry-pick transfer...");
 
-    if (input === "y" || input === "yes") {
-      console.log("\n🚀 Starting cherry-pick transfer...");
+    for (const commit of missingCommits) {
+      process.stdout.write(`Applying \x1b[33m${commit.hash.substring(0, 7)}\x1b[0m... `);
+      const pick = tgtGit(["cherry-pick", commit.hash]);
 
-      for (const commit of missingCommits) {
-        console.write(`Applying \x1b[33m${commit.hash.substring(0, 7)}\x1b[0m... `);
-        const pick = await runCmd(["git", "cherry-pick", commit.hash], tgtPath);
-
-        if (pick.success) {
-          console.log("\x1b[32mSuccess\x1b[0m");
-        } else {
-          console.log("\x1b[31mConflict/Failed\x1b[0m");
-          console.error(`\n❌ Cherry-pick stopped due to conflicts on commit ${commit.hash.substring(0, 7)}.`);
-          console.error("Please open your target folder, resolve conflicts, commit, and then clean up the temporary remote.");
-          process.exit(1);
-        }
+      if (pick.exitCode === 0) {
+        console.log("\x1b[32mSuccess\x1b[0m");
+      } else {
+        console.log("\x1b[31mConflict/Failed\x1b[0m");
+        console.error(`\n❌ Cherry-pick stopped due to conflicts on commit ${commit.hash.substring(0, 7)}.`);
+        console.error("Please open your target folder, resolve conflicts, commit, and then clean up the temporary remote.");
+        process.exit(1);
       }
-      console.log("\n🎉 All missing commits successfully copied!");
-      break;
-    } else {
-      console.log("\nSkipping transfer.");
-      break;
     }
+    console.log("\n🎉 All missing commits successfully copied!");
   }
 
-  // Cleanup remote attachment
-  await runCmd(["git", "remote", "remove", remoteName], tgtPath);
+  // Cleanup remote
+  tgtGit(["remote", "remove", remoteName]);
 }
 
 main();
