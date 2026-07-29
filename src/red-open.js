@@ -17,6 +17,7 @@ import { info, fail, openBrowser } from "./utils.js";
 function printHelp() {
     console.log("Usage:");
     console.log("  bun run src/red-open.js              – open ticket from current branch");
+    console.log("  bun run src/red-open.js <ticket-number> – open a specific Redmine ticket");
     console.log("  bun run src/red-open.js --help       – show this help message");
     console.log("");
     console.log("Secrets (env var → ~/.forgejo-cli.env → OS vault):");
@@ -44,6 +45,20 @@ async function main() {
         printHelp();
     }
 
+    const firstArg = args[0];
+
+    // If the first argument is a number, open that specific ticket
+    if (firstArg && /^\d+$/.test(firstArg)) {
+        const { baseUrl } = getRedmineConfig(true);
+        if (!baseUrl) {
+            fail(`REDMINE_URL not found. Set it as an environment variable or add to ~/.forgejo-cli.env`);
+        }
+        const url = `${baseUrl}/issues/${firstArg}`;
+        info(`Opening Redmine ticket #${firstArg}...`);
+        openBrowser(url);
+        process.exit(0);
+    }
+
     info("Reading current branch...");
     const branchName = getCurrentBranch();
     const ticketNumber = extractTicketFromBranch(branchName);
@@ -51,7 +66,6 @@ async function main() {
     if (!ticketNumber) {
         fail(`Branch "${branchName}" does not start with a ticket number. 
               This script expects branches named like '12345-fix-bug'.`);
-        process.exit(0);
     }
 
     info(`Found ticket #${ticketNumber} in branch "${branchName}".`);

@@ -30,9 +30,8 @@ function isMergeable(details) {
     return details.mergeable === true;
 }
 
-function statusIcon(details) {
-    if (details.mergeable) return "✅";
-    const state = details.mergeable_state || "blocked";
+function statusIcon(details, behindCount) {
+    if (details.mergeable) return behindCount > 0 ? `📉` : "✅";
     return "❌";
 }
 
@@ -169,13 +168,12 @@ async function main() {
         console.log(`📊 Open PRs for ${owner}/${repo}:\n`);
         prs.forEach(pr => {
             const details = prDetailsMap.get(pr.number);
-            const icon = statusIcon(details);
-            const state = details.mergeable_state || (details.mergeable ? "clean" : "blocked");
-            const behindCount = getBehindCount(details.base.ref, details.head.ref);
-            const behindInfo = behindCount !== null ? (behindCount > 0 ? `📉 behind by ${behindCount}` : `✅ up to date`) : "";
+            const state = details.mergeable_state || (details.mergeable ? "clean  " : "blocked");
+            const behindCount = getBehindCount(details.base.ref, details.head.ref) || 0;
+            const icon = statusIcon(details, behindCount);
             const author = details.user ? details.user.login : "unknown";
             const updated = details.updated_at ? new Date(details.updated_at).toLocaleString() : "";
-            console.log(`${icon} ${author} |  ${updated}  |  [${state}] ${behindInfo} | ${pr.title}`);
+            console.log(`${icon} ${(behindCount+'').padStart(3,' ')} | ${(pr.number+'').padStart(5,' ')} | ${(author||'').padEnd(12,' ')} | ${updated} | ${pr.title}`);
         });
         process.exit(0);
     }

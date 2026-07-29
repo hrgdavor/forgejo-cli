@@ -20,6 +20,7 @@ import { info, fail, openBrowser } from "./utils.js";
 function printHelp() {
     console.log("Usage:");
     console.log("  bun run src/fg-open.js              – open PR for current branch, or branch if no PR");
+    console.log("  bun run src/fg-open.js <PR-number>  – open a specific PR by number");
     console.log("  bun run src/fg-open.js --help       – show this help message");
     console.log("");
     console.log("Environment variables:");
@@ -50,6 +51,18 @@ async function main() {
 
     if (args[0] === "--help" || args[0] === "-h") {
         printHelp();
+    }
+
+    const firstArg = args[0];
+
+    // If the first argument is a number, open that specific PR
+    if (firstArg && /^\d+$/.test(firstArg)) {
+        const { baseUrl, owner, repo } = getRepoContext();
+        const host = baseUrl.replace("/api/v1", "");
+        const url = `${host}/${owner}/${repo}/pulls/${firstArg}`;
+        info(`Opening PR #${firstArg}...`);
+        openBrowser(url);
+        process.exit(0);
     }
 
     info("Reading current branch...");
