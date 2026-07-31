@@ -160,16 +160,23 @@ async function main() {
 
         console.log(`📊 Open PRs for ${owner}/${repo}:\n`);
         const behindPrs = [];
+        let lastAuthor
         prs.forEach(pr => {
             const details = prDetailsMap.get(pr.number);
             const hasConflict = details.mergeable === false;
             const isBehind = details.merge_base && details.base?.sha && details.merge_base !== details.base.sha;
             if (isBehind && !hasConflict) behindPrs.push(pr.number);
             const icon = hasConflict ? "❌" : isBehind ? "📉" : "✅";
-            const state = hasConflict ? "blocked" : isBehind ? "behind" : "clean";
             const author = details.user ? details.user.login : "unknown";
             const updated = details.updated_at ? new Date(details.updated_at).toLocaleString() : "";
-            console.log(`${icon} ${(state || "").padEnd(10, " ")} | ${(pr.number+'').padStart(5,' ')} | ${(author||'').padEnd(12,' ')} | ${updated} | ${pr.title}`);
+            const created = details.created_at ? new Date(details.created_at).toLocaleDateString() : "";
+            const ageMonths = details.created_at
+                ? Math.round((Date.now() - new Date(details.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+                : 0;
+
+            if(lastAuthor != author) console.log('\n'+author+':')
+            console.log(`  ${icon} ${(pr.number+'').padStart(5,' ')} | ${updated} | ${created} | ${(ageMonths+'').padStart(2,' ')}m | ${pr.title}`);
+            lastAuthor = author
         });
         if (behindPrs.length > 0) {
             console.log(`\nBehind PRs: ${behindPrs.join(",")}`);
