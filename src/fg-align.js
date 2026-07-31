@@ -8,18 +8,18 @@ const { baseUrl, owner, repo } = getRepoContext();
 
 function printHelp() {
     console.log("Usage:");
-    console.log("  bun run src/fg-align.js              – list open PRs with mergeable status");
-    console.log("  bun run src/fg-align.js all          – merge base into all mergeable PR branches and push");
-    console.log("  bun run src/fg-align.js <PR-number>  – merge base into a specific PR branch and push");
-    console.log("  bun run src/fg-align.js --help       – show this help message");
+    console.log("  bun run src/fg-align.js                – list open PRs with mergeable status");
+    console.log("  bun run src/fg-align.js all            – merge base into all mergeable PR branches and push");
+    console.log("  bun run src/fg-align.js <PR-numbers>   – merge base into specific PR branches and push");
+    console.log("  bun run src/fg-align.js --help         – show this help message");
     console.log("");
     console.log("Alignment means merging the base branch into the PR branch");
     console.log("so the PR is no longer behind. It does NOT merge the PR into base.");
     console.log("");
     console.log("Flags:");
-    console.log("  all             Merge base into every open PR that is mergeable and push");
-    console.log("  <PR-number>     Numeric PR ID to merge base into if mergeable and push");
-    console.log("  --help, -h      Show this help");
+    console.log("  all                    Merge base into every open PR that is mergeable and push");
+    console.log("  <PR-numbers>           Numeric PR IDs, comma-separated (e.g. 123,456,789)");
+    console.log("  --help, -h             Show this help");
     console.log("");
     console.log("Environment variables:");
     console.log("  FORGEJO_TOKEN  – Forgejo/Gitea personal access token");
@@ -28,24 +28,6 @@ function printHelp() {
 
 function isMergeable(details) {
     return details.mergeable === true;
-}
-
-function statusIcon(details, behindCount) {
-    if (details.mergeable) return behindCount > 0 ? `📉` : "✅";
-    return "❌";
-}
-
-function fetchRefs(baseRef, headRef) {
-    spawnSync(["git", "fetch", "origin", baseRef, headRef], { stdio: ["pipe", "pipe", "pipe"] });
-}
-
-function getBehindCount(baseRef, headRef) {
-    fetchRefs(baseRef, headRef);
-    const result = spawnSync(["git", "rev-list", "--count", `${headRef}..${baseRef}`]);
-    if (result.exitCode === 0) {
-        return parseInt(result.stdout.toString().trim(), 10);
-    }
-    return null;
 }
 
 async function fetchPrDetails(prNumber) {
@@ -68,12 +50,6 @@ async function alignPr(prNumber) {
     const headRef = details.head.ref;
     const baseRef = details.base.ref;
 
-    const behindCount = getBehindCount(baseRef, headRef);
-    if (behindCount === 0) {
-        console.log(`✅ PR #${prNumber} is already up to date with ${baseRef}. Nothing to do.`);
-        return true;
-    }
-
     const currentBranch = runGit(["branch", "--show-current"], "get current branch");
 
     const statusResult = spawnSync(["git", "status", "--porcelain"], { stdio: ["pipe", "pipe", "pipe"] });
@@ -95,6 +71,9 @@ async function alignPr(prNumber) {
     if (checkout.exitCode !== 0) {
         fail(`Failed to checkout ${headRef}: ${checkout.stderr.toString().trim()}`);
     }
+
+    info(`Fetching ${baseRef} from origin...`);
+    spawnSync(["git", "fetch", "origin", baseRef], { stdio: ["pipe", "pipe", "pipe"] });
 
     info(`Merging ${baseRef} into ${headRef}...`);
     const merge = spawnSync([
@@ -135,18 +114,23 @@ async function alignPr(prNumber) {
 async function main() {
     const args = Bun.argv.slice(2);
 
-    if (args.includes("--help") || args.includes("-h")) {
+    const allArgs = args.flatMap(a => a.split(","));
+    const firstArg = allArgs[0] || "list";
+
+    if (firstArg === "--help" || firstArg === "-h") {
         printHelp();
     }
 
-    const mode = args[0] || "list";
-    const targetPrId = mode === "all" ? null : (mode === "list" ? null : mode);
+    const listOnly = firstArg === "list";
+    const shouldAlignAll = firstArg === "all";
 
-    if (targetPrId !== null && !/^\d+$/.test(targetPrId)) {
-        fail(`Invalid PR ID: "${mode}". Expected a numeric PR ID or "all".`);
+    let targetPrIds = [];
+    if (!listOnly && !shouldAlignAll) {
+        targetPrIds = allArgs.filter(a => /^\d+$/.test(a));
+        if (targetPrIds.length === 0) {
+            fail(`Invalid PR IDs. Expected numeric PR IDs, comma-separated list, or "all".`);
+        }
     }
-
-    const listOnly = mode === "list";
 
     let prs = [];
     if (listOnly) {
@@ -160,25 +144,38 @@ async function main() {
             process.exit(0);
         }
 
+        prs.sort((a, b) => (a.user?.login || "").localeCompare(b.user?.login || ""));
+
+        console.log(`  found ${prs.length} PRs, fetching details...`);
+
+        const t0 = performance.now();
+        const prDetails = await Promise.all(prs.map(pr => fetchPrDetails(pr.number)));
+        const t1 = performance.now();
+        console.log(`  fetched all PR details in ${(t1 - t0).toFixed(0)}ms`);
+
         const prDetailsMap = new Map();
-        for (const pr of prs) {
-            prDetailsMap.set(pr.number, await fetchPrDetails(pr.number));
+        for (const [idx, pr] of prs.entries()) {
+            prDetailsMap.set(pr.number, prDetails[idx]);
         }
 
         console.log(`📊 Open PRs for ${owner}/${repo}:\n`);
+        const behindPrs = [];
         prs.forEach(pr => {
             const details = prDetailsMap.get(pr.number);
-            const state = details.mergeable_state || (details.mergeable ? "clean  " : "blocked");
-            const behindCount = getBehindCount(details.base.ref, details.head.ref) || 0;
-            const icon = statusIcon(details, behindCount);
+            const hasConflict = details.mergeable === false;
+            const isBehind = details.merge_base && details.base?.sha && details.merge_base !== details.base.sha;
+            if (isBehind && !hasConflict) behindPrs.push(pr.number);
+            const icon = hasConflict ? "❌" : isBehind ? "📉" : "✅";
+            const state = hasConflict ? "blocked" : isBehind ? "behind" : "clean";
             const author = details.user ? details.user.login : "unknown";
             const updated = details.updated_at ? new Date(details.updated_at).toLocaleString() : "";
-            console.log(`${icon} ${(behindCount+'').padStart(3,' ')} | ${(pr.number+'').padStart(5,' ')} | ${(author||'').padEnd(12,' ')} | ${updated} | ${pr.title}`);
+            console.log(`${icon} ${(state || "").padEnd(10, " ")} | ${(pr.number+'').padStart(5,' ')} | ${(author||'').padEnd(12,' ')} | ${updated} | ${pr.title}`);
         });
+        if (behindPrs.length > 0) {
+            console.log(`\nBehind PRs: ${behindPrs.join(",")}`);
+        }
         process.exit(0);
     }
-
-    const shouldAlignAll = mode === "all";
 
     let prsToProcess = [];
     if (shouldAlignAll) {
@@ -189,33 +186,41 @@ async function main() {
             process.exit(0);
         }
         prsToProcess = prs;
+        prsToProcess.sort((a, b) => (a.user?.login || "").localeCompare(b.user?.login || ""));
     } else {
-        const details = await fetchPrDetails(parseInt(targetPrId, 10));
-        const isOpen = details.state === "open";
-        if (!isOpen) {
-            fail(`PR #${targetPrId} is not open (state: ${details.state}).`);
+        for (const prId of targetPrIds) {
+            const details = await fetchPrDetails(parseInt(prId, 10));
+            if (details.state !== "open") {
+                console.error(`⚠️  PR #${prId} is not open (state: ${details.state}). Skipping.`);
+                continue;
+            }
+            prsToProcess.push({ number: details.number, title: details.title, head: { ref: details.head.ref }, base: { ref: details.base.ref } });
         }
-        prsToProcess = [{ number: details.number, title: details.title, head: { ref: details.head.ref }, base: { ref: details.base.ref } }];
+        if (prsToProcess.length === 0) {
+            fail("No open PRs to process.");
+        }
     }
 
+    const prDetails = await Promise.all(prsToProcess.map(pr => fetchPrDetails(pr.number)));
     const prDetailsMap = new Map();
-    for (const pr of prsToProcess) {
-        prDetailsMap.set(pr.number, await fetchPrDetails(pr.number));
+    for (const [idx, pr] of prsToProcess.entries()) {
+        prDetailsMap.set(pr.number, prDetails[idx]);
     }
 
     let alignedCount = 0;
 
     for (const pr of prsToProcess) {
         const details = prDetailsMap.get(pr.number);
-        const state = details.mergeable_state || (details.mergeable ? "clean" : "blocked");
-        const behindCount = getBehindCount(details.base.ref, details.head.ref);
+        const hasConflict = details.mergeable === false;
+        const isBehind = details.merge_base && details.base?.sha && details.merge_base !== details.base.sha;
+        const state = hasConflict ? "blocked" : isBehind ? "behind" : "clean";
 
         if (!isMergeable(details)) {
             console.log(`🚫 Skipping PR #${pr.number} (state: ${state}): ${pr.title}`);
             continue;
         }
 
-        if (behindCount === 0) {
+        if (!isBehind) {
             if (shouldAlignAll) {
                 continue;
             }
