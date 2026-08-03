@@ -6,3 +6,4 @@ export { getRepoContext } from "./util/forgejo/getRepoContext.js";
 export { fetchAllPages } from "./util/forgejo/fetchAllPages.js";
 export { fetchPagesUntil } from "./util/forgejo/fetchPagesUntil.js";
 export { mapWithConcurrency } from "./util/forgejo/mapWithConcurrency.js";
+export { checkForgejoAvailability } from "./util/forgejo/checkForgejoAvailability.js";

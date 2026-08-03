@@ -13,7 +13,8 @@ import {
     fetchRedmineIssue, createPullRequest, computeBranchConfig, computeBranchName,
     validateTicketNumber, getCurrentBranch, promptChoice,
     checkExistingBranch, createBranch, pushBranch, retryPushBranch,
-    prInfoText, appendRedminePrField, getRedmineConfig
+    prInfoText, appendRedminePrField, getRedmineConfig,
+    checkForgejoAvailability
 } from "./red-utils.js";
 
 
@@ -59,6 +60,11 @@ async function main() {
     info(`Fetching Redmine issue #${ticketNumber}...`);
     const issue = await fetchRedmineIssue(ticketNumber);
     const title = issue.subject;
+
+    const forgejoAvailable = await checkForgejoAvailability();
+    if (!forgejoAvailable) {
+        fail("Forgejo is not reachable - cannot create a Pull Request. Aborting.");
+    }
 
     const branchName = computeBranchName(ticketNumber, title);
     const { pkg, defaultBaseBranch } = computeBranchConfig();

@@ -15,6 +15,7 @@ export { prInfoText } from "./util/redmine/prInfoText.js";
 export { appendRedminePrField } from "./util/redmine/appendRedminePrField.js";
 export { postLastCommitMessage } from "./util/redmine/postLastCommitMessage.js";
 export { createPullRequest } from "./util/forgejo/createPullRequest.js";
+export { checkForgejoAvailability } from "./util/forgejo/checkForgejoAvailability.js";
 export { getCurrentBranch } from "./util/git/getCurrentBranch.js";
 export { promptChoice } from "./util/git/promptChoice.js";
 export { checkExistingBranch } from "./util/git/checkExistingBranch.js";
