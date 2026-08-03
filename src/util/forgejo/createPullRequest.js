@@ -24,6 +24,7 @@ export async function createPullRequest(head, title, base = "main", body = "") {
     }
 
     const pr = await res.json();
-    logActivity(`PR #${pr.number} created: ${pr.html_url} (${title})`);
+    const ticketMatch = title.match(/#(\d+)/);
+    logActivity(`PR #${pr.number}: ${pr.html_url}`, ticketMatch ? ticketMatch[1] : undefined);
     return pr;
 }

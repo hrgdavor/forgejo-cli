@@ -24,6 +24,10 @@ The script will:
 
 Every PR creation is logged to `~/.forgejo-cli/log` (viewable with `bun run src/fg-log.js`).
 
+### Existing PR detection
+
+If an open PR already exists for the computed branch, the script offers to simply switch to that branch instead of creating a new PR. If you accept, it checks out the branch and (if no log line for that PR exists today) logs the PR access to `~/.forgejo-cli/log`.
+
 ### Resume on failure
 
 If the script crashes after creating the branch but before pushing (e.g. network failure), re-running with the same ticket number will detect that the branch is already checked out and skip straight to push + PR creation.

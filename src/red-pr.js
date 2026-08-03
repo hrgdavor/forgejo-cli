@@ -9,12 +9,13 @@
 
 import { fail, info, ok } from "./utils.js";
 import { truncateAtWordBoundary } from "./util/general/truncateAtWordBoundary.js";
+import { logActivity, hasPrActivityForTicketToday } from "./util/general/logActivity.js";
 import {
     fetchRedmineIssue, createPullRequest, computeBranchConfig, computeBranchName,
     validateTicketNumber, getCurrentBranch, promptChoice,
     checkExistingBranch, createBranch, pushBranch, retryPushBranch,
     prInfoText, appendRedminePrField, getRedmineConfig,
-    checkForgejoAvailability
+    checkForgejoAvailability, findPrForBranch, checkoutBranch
 } from "./red-utils.js";
 
 
@@ -76,6 +77,29 @@ async function main() {
     console.log(`🎫 Ticket         : #${ticketNumber} - ${title}`);
     console.log(`🌿 New branch     : ${branchName}`);
     console.log("");
+
+    // If a PR already exists for this branch, offer to just switch to it
+    const existingPr = await findPrForBranch(branchName);
+    if (existingPr) {
+        info(`PR #${existingPr.number} already exists for branch "${branchName}".`);
+        const switchToPr = await promptChoice(
+            `Switch to branch "${branchName}"? (y/N) `,
+            input => input === "y" || input === "yes"
+        );
+        if (switchToPr) {
+            checkoutBranch(branchName);
+            if (!hasPrActivityForTicketToday(ticketNumber)) {
+                logActivity(`#${ticketNumber} ${title}`, ticketNumber);
+            }
+            console.log("");
+            console.log("Done! 🎉");
+            console.log(`   Branch : ${branchName}`);
+            console.log(`   PR     : ${existingPr.html_url}`);
+            process.exit(0);
+        }
+        console.log("Continuing with PR creation...");
+        console.log("");
+    }
 
     let prTarget = defaultBaseBranch;
 
