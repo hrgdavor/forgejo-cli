@@ -22,6 +22,8 @@ The script will:
 8. Create a Pull Request with title `#<ticketNumber> <title>`
 9. If configured, update a Redmine custom field with branch/PR info
 
+Every PR creation is logged to `~/.forgejo-cli/log` (viewable with `bun run src/fg-log.js`).
+
 ### Resume on failure
 
 If the script crashes after creating the branch but before pushing (e.g. network failure), re-running with the same ticket number will detect that the branch is already checked out and skip straight to push + PR creation.

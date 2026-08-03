@@ -18,6 +18,8 @@ bun run src/red-commit.js --help         # show help
 | **`--hook`** | Designed as a `post-commit` git hook. Reads the last commit message and posts it to Redmine **only if** the branch starts with a number. |
 | **`-f`** | Force mode. Reads the last commit message and looks for a ticket number in the message first (`#12345` or `12345` at the start), then falls back to the branch name. Useful for retroactively pushing commits or when the ticket reference is in the message text. |
 
+Every successfully added Redmine note is logged to `~/.forgejo-cli/log` (viewable with `bun run src/fg-log.js`).
+
 ## Environment variables
 
 | Variable | Required | Description |

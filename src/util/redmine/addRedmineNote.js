@@ -1,5 +1,6 @@
 // addRedmineNote.js - Post a note (comment) to a Redmine issue via the REST API
 import { getRedmineConfig } from "./getRedmineConfig.js";
+import { logActivity } from "../general/logActivity.js";
 
 export async function addRedmineNote(issueId, note, gitGuiFriendly = false) {
     const { baseUrl, apiKey } = getRedmineConfig(gitGuiFriendly);
@@ -22,5 +23,6 @@ export async function addRedmineNote(issueId, note, gitGuiFriendly = false) {
         console.error(`⚠️  Failed to add note to Redmine issue #${issueId}: ${res.status} ${text}`);
         return false;
     }
+    logActivity(`Redmine note added to issue #${issueId}: ${note.split("\n")[0]}`);
     return true;
 }

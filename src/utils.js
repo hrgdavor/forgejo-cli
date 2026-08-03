@@ -8,3 +8,4 @@ export { openBrowser } from "./util/general/openBrowser.js";
 export { sanitizeBranchName } from "./util/git/sanitizeBranchName.js";
 export { getLastCommitMessage } from "./util/git/getLastCommitMessage.js";
 export { git } from "./util/git/git.js";
+export { logActivity } from "./util/general/logActivity.js";

@@ -2,6 +2,7 @@
 import { getRepoContext } from "./getRepoContext.js";
 import { getHeaders } from "./getHeaders.js";
 import { fail } from "../general/fail.js";
+import { logActivity } from "../general/logActivity.js";
 
 export async function createPullRequest(head, title, base = "main", body = "") {
     const { baseUrl, owner, repo } = getRepoContext();
@@ -22,5 +23,7 @@ export async function createPullRequest(head, title, base = "main", body = "") {
         fail(`Failed to create PR: ${res.status} ${text}`);
     }
 
-    return await res.json();
+    const pr = await res.json();
+    logActivity(`PR #${pr.number} created: ${pr.html_url} (${title})`);
+    return pr;
 }
