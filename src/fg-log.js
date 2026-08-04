@@ -2,22 +2,26 @@
 // fg-log.js - CLI: list activity logged to ~/.forgejo-cli/log
 //
 // Usage:
-//   bun run src/fg-log.js          - show today's log, grouped by ticket (no dates)
-//   bun run src/fg-log.js <N>      - show log lines from the last N days (default: 1)
-//   bun run src/fg-log.js -1       - show all log lines
-//   bun run src/fg-log.js --help   - show help
+//   bun run src/fg-log.js              - show today's log, grouped by ticket (no dates)
+//   bun run src/fg-log.js <N>          - show the last N days, day by day, grouped by ticket
+//   bun run src/fg-log.js <N> raw      - show raw log lines for the last N days (+ log file path)
+//   bun run src/fg-log.js -1           - show all log days, day by day, grouped by ticket
+//   bun run src/fg-log.js -1 raw       - show all raw log lines (+ log file path)
+//   bun run src/fg-log.js --help       - show help
 //
 // The log is written by other forgejo-cli commands (e.g. red-pr, red-commit)
 // as JSON lines: { "ts": "<ISO timestamp>", "msg": "...", "ticket": "<n>"? }
 
-import { readLogEntries } from "./util/general/logActivity.js";
+import { readLogEntries, LOG_FILE } from "./util/general/logActivity.js";
 
 function printHelp() {
     console.log("Usage:");
-    console.log("  bun run src/fg-log.js        – show today's log, grouped by ticket (no dates)");
-    console.log("  bun run src/fg-log.js <N>    – show log lines from the last N days (default: 1)");
-    console.log("  bun run src/fg-log.js -1     – show all log lines");
-    console.log("  bun run src/fg-log.js --help – show this help message");
+    console.log("  bun run src/fg-log.js              – show today's log, grouped by ticket (no dates)");
+    console.log("  bun run src/fg-log.js <N>          – show the last N days, day by day, grouped by ticket");
+    console.log("  bun run src/fg-log.js <N> raw      – show raw log lines for the last N days (+ log file path)");
+    console.log("  bun run src/fg-log.js -1           – show all log days, day by day, grouped by ticket");
+    console.log("  bun run src/fg-log.js -1 raw       – show all raw log lines (+ log file path)");
+    console.log("  bun run src/fg-log.js --help       – show this help message");
     console.log("");
     console.log("The log lives at ~/.forgejo-cli/log and is written by");
     console.log("forgejo-cli commands like red-pr and red-commit.");
@@ -74,6 +78,43 @@ function printGrouped(entries) {
     }
 }
 
+function printRaw(entries) {
+    entries.forEach(e => {
+        if (e.ts) {
+            console.log(`${e.ts} ${e.msg}`);
+        } else {
+            console.log(e.msg);
+        }
+    });
+}
+
+// Print the given entries grouped by day (newest first), each day using the
+// same grouped-by-ticket format as the default today view.
+function printDaysGrouped(filtered) {
+    const dayMap = new Map();
+    for (const e of filtered) {
+        const day = e.ts ? e.ts.slice(0, 10) : "other";
+        if (!dayMap.has(day)) dayMap.set(day, []);
+        dayMap.get(day).push(e);
+    }
+
+    const dayKeys = [...dayMap.keys()].sort((a, b) => {
+        if (a === "other") return 1;
+        if (b === "other") return -1;
+        return b.localeCompare(a); // newest day first
+    });
+
+    for (const day of dayKeys) {
+        console.log(`\n=== ${day} ===`);
+        const dayEntries = dayMap.get(day);
+        if (day === "other") {
+            printRaw(dayEntries); // unparseable lines: just raw
+        } else {
+            printGrouped(dayEntries);
+        }
+    }
+}
+
 function main() {
     const args = Bun.argv.slice(2);
 
@@ -81,9 +122,12 @@ function main() {
         printHelp();
     }
 
-    // Determine the day filter
-    let days = null; // null = all
     const firstArg = args[0];
+    const secondArg = args[1];
+    const raw = secondArg === "raw";
+
+    // Determine the day filter
+    let days = null; // null = all (-1)
     if (firstArg !== undefined) {
         const parsed = Number(firstArg);
         if (Number.isNaN(parsed)) {
@@ -119,8 +163,8 @@ function main() {
         process.exit(0);
     }
 
-    // Default (no arg) = today, grouped, no dates
-    if (days === null && firstArg === undefined) {
+    // Default (no args): today, grouped, no day header
+    if (firstArg === undefined) {
         const todayEntries = filtered.filter(e => isToday(e.ts));
         if (todayEntries.length === 0) {
             console.log("No log entries found for today.");
@@ -130,14 +174,15 @@ function main() {
         process.exit(0);
     }
 
-    // Otherwise print raw lines (with timestamps)
-    filtered.forEach(e => {
-        if (e.ts) {
-            console.log(`${e.ts} ${e.msg}`);
-        } else {
-            console.log(e.msg);
-        }
-    });
+    // Raw mode: print log file path at the top, then raw lines
+    if (raw) {
+        console.log(`Log file: ${LOG_FILE}`);
+        printRaw(filtered);
+        process.exit(0);
+    }
+
+    // Multi-day / all: show each day (newest first) with the grouped format
+    printDaysGrouped(filtered);
 }
 
 main();

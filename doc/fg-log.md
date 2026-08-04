@@ -5,17 +5,21 @@ Lists activity lines written to `~/.forgejo-cli/log` by other forgejo-cli comman
 ## Usage
 
 ```bash
-bun run src/fg-log.js          # show today's log, grouped by ticket (no dates)
-bun run src/fg-log.js <N>      # show log lines from the last N days (default: 1)
-bun run src/fg-log.js -1       # show all log lines
-bun run src/fg-log.js --help   # show help
+bun run src/fg-log.js              # show today's log, grouped by ticket (no dates)
+bun run src/fg-log.js <N>          # show the last N days, day by day, grouped by ticket
+bun run src/fg-log.js <N> raw      # show raw log lines for the last N days (+ log file path)
+bun run src/fg-log.js -1           # show all log days, day by day, grouped by ticket
+bun run src/fg-log.js -1 raw       # show all raw log lines (+ log file path)
+bun run src/fg-log.js --help       # show help
 ```
 
 | Command | Description |
 |---------|-------------|
 | (no args) | Shows today's log, **grouped by ticket** with commit messages indented under their PR header (no dates shown) |
-| `<N>` | Shows raw log lines (with timestamps) from the last `N` days, including today (e.g. `2` = today + yesterday) |
-| `-1` | Shows every raw log line ever written |
+| `<N>` | Shows the last `N` days (including today), **day by day**, each day grouped by ticket (newest day first) |
+| `<N> raw` | Prints the full log file path at the top, then the raw log lines (with timestamps) for the last `N` days |
+| `-1` | Shows all log days, day by day, grouped by ticket |
+| `-1 raw` | Prints the full log file path, then every raw log line ever written |
 | `--help`, `-h` | Shows usage help |
 
 ## Example (default grouped view)
@@ -27,6 +31,30 @@ PR #42: https://git.example.com/owner/repo/pulls/42
    Commit: add tests
 PR #43: https://git.example.com/owner/repo/pulls/43
    Commit: update docs
+```
+
+## Example (day-by-day grouped view)
+
+```bash
+$ bun run src/fg-log.js 2
+
+=== 2026-08-03 ===
+PR #42: https://git.example.com/owner/repo/pulls/42
+   Commit: fix login flow
+   Commit: add tests
+
+=== 2026-08-02 ===
+PR #40: https://git.example.com/owner/repo/pulls/40
+   Commit: initial draft
+```
+
+## Example (raw view)
+
+```bash
+$ bun run src/fg-log.js 1 raw
+Log file: C:\Users\you\.forgejo-cli\log
+2026-08-03T09:20:20.000Z PR #42: https://git.example.com/owner/repo/pulls/42
+2026-08-03T09:20:21.000Z Commit: fix login flow
 ```
 
 ## Log line format (JSON)
