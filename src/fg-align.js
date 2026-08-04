@@ -36,7 +36,7 @@ async function fetchPrDetails(prNumber) {
     return await res.json();
 }
 
-function runGit(args, label) {
+function runGit(args, label = `git ${args.join(" ")}`) {
     const result = spawnSync(["git", ...args]);
     if (result.exitCode !== 0) {
         const msg = result.stderr.toString().trim() || result.stdout.toString().trim();
@@ -120,6 +120,10 @@ async function main() {
     if (firstArg === "--help" || firstArg === "-h") {
         printHelp();
     }
+
+    // Keep local refs up to date - required for accurate merge-base checks
+    info("Fetching from origin...");
+    runGit(["fetch", "origin"]);
 
     const listOnly = firstArg === "list";
     const shouldAlignAll = firstArg === "all";

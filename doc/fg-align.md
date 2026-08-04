@@ -10,6 +10,7 @@ bun run src/fg-align.js
 
 ## What happens behind the scenes
 
+0. **Git fetch:** Runs `git fetch origin` first so local refs are up to date — this is required for accurate merge-base checks.
 1. **API rebase attempt:** Tries `Do: "rebase"` via the Forgejo merge endpoint.
 2. **Local rebase fallback:** If the API rebase fails (e.g. "head is behind"), does `git rebase <base> <head>` locally and force-pushes the result.
 3. **Fork handling:** If the PR is from a fork and the push is rejected, prints manual instructions for the fork owner.
