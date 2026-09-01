@@ -30,6 +30,25 @@ function isMergeable(details) {
     return details.mergeable === true;
 }
 
+function hasInProgressMerge() {
+    const pathResult = spawnSync(["git", "rev-parse", "--git-path", "MERGE_HEAD"],
+        { stdio: ["pipe", "pipe", "pipe"] });
+    if (pathResult.exitCode !== 0) return false;
+    const mergeHeadPath = pathResult.stdout.toString().trim();
+    const exists = spawnSync(["test", "-f", mergeHeadPath],
+        { stdio: ["pipe", "pipe", "pipe"] });
+    return exists.exitCode === 0;
+}
+
+function abortInProgressMerge(context) {
+    if (!hasInProgressMerge()) return;
+    console.error(`⚠️  Detected in-progress merge${context ? ` on "${context}"` : ""} — aborting it.`);
+    const abort = spawnSync(["git", "merge", "--abort"], { stdio: ["pipe", "pipe", "pipe"] });
+    if (abort.exitCode !== 0) {
+        fail(`Found in-progress merge that cannot be auto-aborted. Resolve manually.`);
+    }
+}
+
 async function fetchPrDetails(prNumber) {
     const res = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${prNumber}`, { headers: getHeaders() });
     if (!res.ok) throw new Error(`Failed to fetch PR #${prNumber}: ${res.statusText}`);
@@ -51,6 +70,8 @@ async function alignPr(prNumber) {
     const baseRef = details.base.ref;
 
     const currentBranch = runGit(["branch", "--show-current"], "get current branch");
+
+    abortInProgressMerge(currentBranch);
 
     const statusResult = spawnSync(["git", "status", "--porcelain"], { stdio: ["pipe", "pipe", "pipe"] });
     if (statusResult.exitCode === 0 && statusResult.stdout.toString().trim()) {
@@ -88,8 +109,15 @@ async function alignPr(prNumber) {
             console.log(`✅ PR #${prNumber} is already up to date with ${baseRef}.`);
             return true;
         }
-        console.error(`❌ Merge of PR #${prNumber} failed. Resolve conflicts, then run:`);
-        console.error(`   git checkout ${headRef} && git commit && git push origin ${headRef}`);
+        const abort = spawnSync(["git", "merge", "--abort"], { stdio: ["pipe", "pipe", "pipe"] });
+        if (abort.exitCode !== 0) {
+            console.error(`⚠️  Failed to abort merge after conflict on PR #${prNumber}:`);
+            console.error(`   ${abort.stderr.toString().trim()}`);
+            console.error(`   Repository may be in a conflicted state. Aborting the run.`);
+            process.exit(1);
+        }
+        console.error(`❌ Merge of PR #${prNumber} produced conflicts — aborted locally.`);
+        console.error(`   The PR branch is unchanged on origin. You can re-attempt after resolving on the PR itself.`);
         console.error(`   ${mergeErr}`);
         return false;
     }
