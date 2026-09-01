@@ -49,6 +49,35 @@ function abortInProgressMerge(context) {
     }
 }
 
+function classifyPr(details) {
+    if (details.mergeable === false) {
+        return { kind: "blocked", reason: "mergeable=false" };
+    }
+    if (!details.base?.ref) {
+        return { kind: "unknown", reason: "missing base.ref" };
+    }
+    if (!details.base?.sha) {
+        return { kind: "unknown", reason: "missing base.sha" };
+    }
+    if (!details.merge_base) {
+        return { kind: "unknown", reason: "missing merge_base" };
+    }
+    if (details.merge_base !== details.base.sha) {
+        return { kind: "behind", baseRef: details.base.ref, baseSha: details.base.sha };
+    }
+    return { kind: "clean", baseRef: details.base.ref };
+}
+
+function assertBaseRefFetched(baseRef, prNumber) {
+    const verify = spawnSync(["git", "rev-parse", "--verify", "--quiet", `origin/${baseRef}`],
+        { stdio: ["pipe", "pipe", "pipe"] });
+    if (verify.exitCode !== 0) {
+        console.error(`❌ PR #${prNumber}: base branch '${baseRef}' not found on origin — skipping.`);
+        return false;
+    }
+    return true;
+}
+
 async function fetchPrDetails(prNumber) {
     const res = await fetch(`${baseUrl}/repos/${owner}/${repo}/pulls/${prNumber}`, { headers: getHeaders() });
     if (!res.ok) throw new Error(`Failed to fetch PR #${prNumber}: ${res.statusText}`);
@@ -95,6 +124,10 @@ async function alignPr(prNumber) {
 
     info(`Fetching ${baseRef} from origin...`);
     spawnSync(["git", "fetch", "origin", baseRef], { stdio: ["pipe", "pipe", "pipe"] });
+
+    if (!assertBaseRefFetched(baseRef, prNumber)) {
+        return false;
+    }
 
     info(`Merging ${baseRef} into ${headRef}...`);
     const merge = spawnSync([
@@ -192,13 +225,19 @@ async function main() {
 
         console.log(`📊 Open PRs for ${owner}/${repo}:\n`);
         const behindPrs = [];
+        const unknownPrs = [];
         let lastAuthor
         prs.forEach(pr => {
             const details = prDetailsMap.get(pr.number);
-            const hasConflict = details.mergeable === false;
-            const isBehind = details.merge_base && details.base?.sha && details.merge_base !== details.base.sha;
-            if (isBehind && !hasConflict) behindPrs.push(pr.number);
-            const icon = hasConflict ? "❌" : isBehind ? "📉" : "✅";
+            const classification = classifyPr(details);
+            const hasConflict = classification.kind === "blocked";
+            const isBehind = classification.kind === "behind";
+            if (isBehind) behindPrs.push(pr.number);
+            if (classification.kind === "unknown") unknownPrs.push(`${pr.number} (${classification.reason})`);
+            const icon = classification.kind === "blocked" ? "❌"
+                : classification.kind === "unknown" ? "❔"
+                : isBehind ? "📉" : "✅";
+            const reasonSuffix = classification.kind === "unknown" ? ` | ${classification.reason}` : "";
             const author = details.user ? details.user.login : "unknown";
             const updated = details.updated_at ? new Date(details.updated_at).toLocaleString() : "";
             const created = details.created_at ? new Date(details.created_at).toLocaleDateString() : "";
@@ -207,11 +246,14 @@ async function main() {
                 : 0;
 
             if(lastAuthor != author) console.log('\n'+author+':')
-            console.log(`  ${icon} ${(pr.number+'').padStart(5,' ')} | ${updated} | ${created} | ${(ageMonths+'').padStart(2,' ')}m | ${pr.title}`);
+            console.log(`  ${icon} ${(pr.number+'').padStart(5,' ')} | ${updated} | ${created} | ${(ageMonths+'').padStart(2,' ')}m | ${pr.title}${reasonSuffix}`);
             lastAuthor = author
         });
         if (behindPrs.length > 0) {
             console.log(`\nBehind PRs: ${behindPrs.join(",")}`);
+        }
+        if (unknownPrs.length > 0) {
+            console.log(`\nUnknown state PRs: ${unknownPrs.join(", ")}`);
         }
         process.exit(0);
     }
@@ -250,20 +292,28 @@ async function main() {
 
     for (const pr of prsToProcess) {
         const details = prDetailsMap.get(pr.number);
-        const hasConflict = details.mergeable === false;
-        const isBehind = details.merge_base && details.base?.sha && details.merge_base !== details.base.sha;
-        const state = hasConflict ? "blocked" : isBehind ? "behind" : "clean";
+        const classification = classifyPr(details);
 
-        if (!isMergeable(details)) {
-            console.log(`🚫 Skipping PR #${pr.number} (state: ${state}): ${pr.title}`);
+        if (classification.kind === "blocked") {
+            console.log(`🚫 Skipping PR #${pr.number} (state: blocked): ${pr.title}`);
             continue;
         }
 
-        if (!isBehind) {
+        if (classification.kind === "unknown") {
+            console.error(`⚠️  PR #${pr.number}: cannot determine alignment state (${classification.reason}) — skipping: ${pr.title}`);
+            continue;
+        }
+
+        if (classification.kind === "clean") {
             if (shouldAlignAll) {
                 continue;
             }
-            console.log(`✅ PR #${pr.number} is already up to date with ${details.base.ref}. Nothing to do.`);
+            console.log(`✅ PR #${pr.number} is already up to date with ${classification.baseRef}. Nothing to do.`);
+            continue;
+        }
+
+        if (!isMergeable(details)) {
+            console.log(`🚫 Skipping PR #${pr.number} (state: not mergeable per API): ${pr.title}`);
             continue;
         }
 
