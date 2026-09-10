@@ -10,6 +10,7 @@ export { prepCommitMsg } from "./util/redmine/prepCommitMsg.js";
 export { extractTicketFromMessage } from "./util/redmine/extractTicketFromMessage.js";
 export { computeBranchConfig } from "./util/redmine/computeBranchConfig.js";
 export { computeBranchName } from "./util/redmine/computeBranchName.js";
+export { resolveTicketType } from "./util/redmine/resolveTicketType.js";
 export { validateTicketNumber } from "./util/redmine/validateTicketNumber.js";
 export { prInfoText } from "./util/redmine/prInfoText.js";
 export { appendRedminePrField } from "./util/redmine/appendRedminePrField.js";

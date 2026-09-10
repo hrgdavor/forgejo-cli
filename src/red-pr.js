@@ -3,15 +3,23 @@
 //
 // Usage:  bun run src/red-pr.js <ticket-number>
 //
-// Reads a Redmine ticket, creates a local branch named <number>-<sanitized-title>,
-// pushes it, opens a Pull Request, and optionally writes the branch/PR info back
+// Reads a Redmine ticket, creates a local branch named
+//   <TYPE>-<number>-<sanitized-title>  (when a ticket type is mapped)
+// or the legacy
+//   <number>-<sanitized-title>         (when no type is mapped or tracker is absent)
+// , pushes it, opens a Pull Request, and optionally writes the branch/PR info back
 // into a Redmine custom field configured via package.json → "redmine_pr_info_field".
+//
+// The <TYPE> prefix is derived from the issue's tracker via the optional
+// package.json key "redmine_ticket_types" (map of Redmine tracker name → prefix).
+// Example:
+//   "redmine_ticket_types": { "Bug": "BUG", "Feature": "FEATURE", "Task": "TASK" }
 
 import { fail, info, ok } from "./utils.js";
 import { truncateAtWordBoundary } from "./util/general/truncateAtWordBoundary.js";
 import { logActivity, hasPrActivityForTicketToday } from "./util/general/logActivity.js";
 import {
-    fetchRedmineIssue, createPullRequest, computeBranchConfig, computeBranchName,
+    fetchRedmineIssue, createPullRequest, computeBranchConfig, computeBranchName, resolveTicketType,
     validateTicketNumber, getCurrentBranch, promptChoice,
     checkExistingBranch, createBranch, pushBranch, retryPushBranch,
     prInfoText, appendRedminePrField, getRedmineConfig,
@@ -43,6 +51,7 @@ function printHelp() {
     console.log('  "redmine_pr_info_text"               – optional text prefix for each new entry (e.g. "[PR]")');
     console.log('  "redmine_pr_default_base_branch"     – default target branch for the PR (default: "main")');
     console.log('  "redmine_pr_title_max"               – max PR title length, cuts at word boundaries (default: 80)');
+    console.log('  "redmine_ticket_types"               – map of Redmine tracker name → branch prefix (e.g. { "Bug": "BUG" })');
     process.exit(0);
 }
 
@@ -67,14 +76,15 @@ async function main() {
         fail("Forgejo is not reachable - cannot create a Pull Request. Aborting.");
     }
 
-    const branchName = computeBranchName(ticketNumber, title);
     const { pkg, defaultBaseBranch } = computeBranchConfig();
+    const ticketType = resolveTicketType(issue);
+    const branchName = computeBranchName(ticketNumber, title, ticketType);
 
     const currentBranch = getCurrentBranch();
 
     console.log("");
     console.log(`📍 Current branch : ${currentBranch}`);
-    console.log(`🎫 Ticket         : #${ticketNumber} - ${title}`);
+    console.log(`🎫 Ticket         : #${ticketNumber} - ${title}${ticketType ? ` [${ticketType}]` : ""}`);
     console.log(`🌿 New branch     : ${branchName}`);
     console.log("");
 
