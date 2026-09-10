@@ -152,7 +152,12 @@ async function main() {
     }
     
     const maxTitleLen = pkg.redmine_pr_title_max || 80;
-    const prTitle = truncateAtWordBoundary(`${ticketNumber} ${title}`, maxTitleLen);
+    // Prefix with the ticket type (e.g. "BUG:") when resolved — the leading
+    // "TYPE:" pattern is what many editors/CI highlight as a special commit
+    // type (conventional-commit style). Falls back to the legacy
+    // "<number> <title>" form when no type is mapped.
+    const typePart = ticketType ? `${ticketType}: ` : "";
+    const prTitle = truncateAtWordBoundary(`${typePart}${ticketNumber} ${title}`, maxTitleLen);
     const ticketUrl = `${getRedmineConfig().baseUrl}/issues/${ticketNumber}`;
     const prBody = `Closes #${ticketNumber}\n\n${ticketUrl}`;
     const pr = await createPullRequest(branchName, prTitle, prTarget, prBody);
