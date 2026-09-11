@@ -8,10 +8,10 @@ const { baseUrl, owner, repo } = getRepoContext();
 
 function printHelp() {
     console.log("Usage:");
-    console.log("  bun run src/fg-align.js                – list open PRs with mergeable status");
-    console.log("  bun run src/fg-align.js all            – merge base into all mergeable PR branches and push");
-    console.log("  bun run src/fg-align.js <PR-numbers>   – merge base into specific PR branches and push");
-    console.log("  bun run src/fg-align.js --help         – show this help message");
+    console.log("  bun run src/fg-align.js                - list open PRs with mergeable status");
+    console.log("  bun run src/fg-align.js all            - merge base into all mergeable PR branches and push");
+    console.log("  bun run src/fg-align.js <PR-numbers>   - merge base into specific PR branches and push");
+    console.log("  bun run src/fg-align.js --help         - show this help message");
     console.log("");
     console.log("Alignment means merging the base branch into the PR branch");
     console.log("so the PR is no longer behind. It does NOT merge the PR into base.");
@@ -22,7 +22,7 @@ function printHelp() {
     console.log("  --help, -h             Show this help");
     console.log("");
     console.log("Environment variables:");
-    console.log("  FORGEJO_TOKEN  – Forgejo/Gitea personal access token");
+    console.log("  FORGEJO_TOKEN  - Forgejo/Gitea personal access token");
     process.exit(0);
 }
 

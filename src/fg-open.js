@@ -19,12 +19,12 @@ import { info, fail, openBrowser } from "./utils.js";
 
 function printHelp() {
     console.log("Usage:");
-    console.log("  bun run src/fg-open.js              – open PR for current branch, or branch if no PR");
-    console.log("  bun run src/fg-open.js <PR-number>  – open a specific PR by number");
-    console.log("  bun run src/fg-open.js --help       – show this help message");
+    console.log("  bun run src/fg-open.js              - open PR for current branch, or branch if no PR");
+    console.log("  bun run src/fg-open.js <PR-number>  - open a specific PR by number");
+    console.log("  bun run src/fg-open.js --help       - show this help message");
     console.log("");
     console.log("Environment variables:");
-    console.log("  FORGEJO_TOKEN  – Forgejo/Gitea personal access token");
+    console.log("  FORGEJO_TOKEN  - Forgejo/Gitea personal access token");
     process.exit(0);
 }
 

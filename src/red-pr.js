@@ -33,9 +33,9 @@ function printHelp() {
     console.log("Usage: bun run src/red-pr.js <ticket-number>");
     console.log("");
     console.log("Secrets (env var → ~/.forgejo-cli.env → OS vault):");
-    console.log("  REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)");
-    console.log("  REDMINE_API_KEY   – Your Redmine API key");
-    console.log("  FORGEJO_TOKEN     – Forgejo/Gitea personal access token");
+    console.log("  REDMINE_URL       - Base URL of your Redmine instance (e.g. https://redmine.example.com)");
+    console.log("  REDMINE_API_KEY   - Your Redmine API key");
+    console.log("  FORGEJO_TOKEN     - Forgejo/Gitea personal access token");
     console.log("");
     console.log("To provide secrets:");
     console.log("  1. Export them as environment variables");
@@ -47,11 +47,11 @@ function printHelp() {
     console.log('     Service names: redmine-url, redmine-api-token, forgejo-token');
     console.log("");
     console.log("Optional package.json properties:");
-    console.log('  "redmine_pr_info_field"              – numeric ID of a Redmine custom field to update with branch/PR info');
-    console.log('  "redmine_pr_info_text"               – optional text prefix for each new entry (e.g. "[PR]")');
-    console.log('  "redmine_pr_default_base_branch"     – default target branch for the PR (default: "main")');
-    console.log('  "redmine_pr_title_max"               – max PR title length, cuts at word boundaries (default: 80)');
-    console.log('  "redmine_ticket_types"               – map of Redmine tracker name → branch prefix (e.g. { "Bug": "BUG" })');
+    console.log('  "redmine_pr_info_field"              - numeric ID of a Redmine custom field to update with branch/PR info');
+    console.log('  "redmine_pr_info_text"               - optional text prefix for each new entry (e.g. "[PR]")');
+    console.log('  "redmine_pr_default_base_branch"     - default target branch for the PR (default: "main")');
+    console.log('  "redmine_pr_title_max"               - max PR title length, cuts at word boundaries (default: 80)');
+    console.log('  "redmine_ticket_types"               - map of Redmine tracker name → branch prefix (e.g. { "Bug": "BUG" })');
     process.exit(0);
 }
 

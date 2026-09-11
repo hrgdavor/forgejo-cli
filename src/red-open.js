@@ -16,13 +16,13 @@ import { info, fail, openBrowser } from "./utils.js";
 
 function printHelp() {
     console.log("Usage:");
-    console.log("  bun run src/red-open.js              – open ticket from current branch");
-    console.log("  bun run src/red-open.js <ticket-number> – open a specific Redmine ticket");
-    console.log("  bun run src/red-open.js --help       – show this help message");
+    console.log("  bun run src/red-open.js              - open ticket from current branch");
+    console.log("  bun run src/red-open.js <ticket-number> - open a specific Redmine ticket");
+    console.log("  bun run src/red-open.js --help       - show this help message");
     console.log("");
     console.log("Secrets (env var → ~/.forgejo-cli.env → OS vault):");
-    console.log("  REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)");
-    console.log("  REDMINE_API_KEY   – Your Redmine API key (used for validation if needed)");
+    console.log("  REDMINE_URL       - Base URL of your Redmine instance (e.g. https://redmine.example.com)");
+    console.log("  REDMINE_API_KEY   - Your Redmine API key (used for validation if needed)");
     console.log("");
     console.log("To provide secrets:");
     console.log("  1. Export them as environment variables");

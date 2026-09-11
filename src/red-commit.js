@@ -7,8 +7,8 @@
 //   bun run src/red-commit.js -f                - force push last commit message as Redmine note for current branch
 //
 // Environment variables:
-//   REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)
-//   REDMINE_API_KEY   – Your Redmine API key
+//   REDMINE_URL       - Base URL of your Redmine instance (e.g. https://redmine.example.com)
+//   REDMINE_API_KEY   - Your Redmine API key
 
 import { appendRedminePrField, extractTicketFromBranch, getCurrentBranch, computeBranchConfig, postLastCommitMessage, promptChoice, addRedmineNote, prepCommitMsg } from "./red-utils.js";
 import { fail, info, ok, git } from "./utils.js";
@@ -18,13 +18,13 @@ import { fail, info, ok, git } from "./utils.js";
 
 function printHelp() {
     console.log("Usage:");
-    console.log("  bun run src/red-commit.js <message>  – git commit + add Redmine note if branch starts with #");
-    console.log("  bun run src/red-commit.js --hook     – git hook: push last commit message as Redmine note");
-    console.log("  bun run src/red-commit.js -f         – force: push last commit message to Redmine for current branch");
+    console.log("  bun run src/red-commit.js <message>  - git commit + add Redmine note if branch starts with #");
+    console.log("  bun run src/red-commit.js --hook     - git hook: push last commit message as Redmine note");
+    console.log("  bun run src/red-commit.js -f         - force: push last commit message to Redmine for current branch");
     console.log("");
     console.log("Secrets (env var → ~/.forgejo-cli.env → OS vault):");
-    console.log("  REDMINE_URL       – Base URL of your Redmine instance (e.g. https://redmine.example.com)");
-    console.log("  REDMINE_API_KEY   – Your Redmine API key");
+    console.log("  REDMINE_URL       - Base URL of your Redmine instance (e.g. https://redmine.example.com)");
+    console.log("  REDMINE_API_KEY   - Your Redmine API key");
     console.log("");
     console.log("To provide secrets:");
     console.log("  1. Export them as environment variables");

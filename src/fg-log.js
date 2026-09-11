@@ -16,12 +16,12 @@ import { readLogEntries, LOG_FILE } from "./util/general/logActivity.js";
 
 function printHelp() {
     console.log("Usage:");
-    console.log("  bun run src/fg-log.js              – show today's log, grouped by ticket (no dates)");
-    console.log("  bun run src/fg-log.js <N>          – show the last N days, day by day, grouped by ticket");
-    console.log("  bun run src/fg-log.js <N> raw      – show raw log lines for the last N days (+ log file path)");
-    console.log("  bun run src/fg-log.js -1           – show all log days, day by day, grouped by ticket");
-    console.log("  bun run src/fg-log.js -1 raw       – show all raw log lines (+ log file path)");
-    console.log("  bun run src/fg-log.js --help       – show this help message");
+    console.log("  bun run src/fg-log.js              - show today's log, grouped by ticket (no dates)");
+    console.log("  bun run src/fg-log.js <N>          - show the last N days, day by day, grouped by ticket");
+    console.log("  bun run src/fg-log.js <N> raw      - show raw log lines for the last N days (+ log file path)");
+    console.log("  bun run src/fg-log.js -1           - show all log days, day by day, grouped by ticket");
+    console.log("  bun run src/fg-log.js -1 raw       - show all raw log lines (+ log file path)");
+    console.log("  bun run src/fg-log.js --help       - show this help message");
     console.log("");
     console.log("The log lives at ~/.forgejo-cli/log and is written by");
     console.log("forgejo-cli commands like red-pr and red-commit.");
