@@ -3,28 +3,48 @@ import { existsSync } from "fs";
 import { spawnSync } from "bun";
 
 // 1. Parse command line arguments
-const [sourceDir, targetDir, mode] = Bun.argv.slice(2);
+const args = Bun.argv.slice(2);
+let mode = "default";
+let startCommit = null;
+
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === "-s" && args[i + 1]) {
+    startCommit = args[++i];
+  } else if (args[i] === "commit") {
+    mode = "commit";
+  }
+}
+
+const sourceDir = args[0];
+const targetDir = args[1];
 
 if (sourceDir === "-h" || sourceDir === "--help") {
   console.log(`
 ${"fg-sync".bold} — sync branches between two local git repositories
 
 USAGE
-  bun run src/fg-sync.js <source-folder> <target-folder> [commit]
+  bun run src/fg-sync.js <source-folder> <target-folder> [commit] [-s <hash>]
 
 MODES
   (default)   Only list missing commits found in source but not in target.
   commit      Cherry-pick the missing commits from source into target.
 
+OPTIONS
+  -s <hash>   Starting commit hash to skip (initial fill basis for sync).
+
 EXAMPLES
   bun run src/fg-sync.js ../repoA ../repoB
   bun run src/fg-sync.js ../repoA ../repoB commit
+  bun run src/fg-sync.js ../repoA ../repoB -s ae49ed5
+  bun run src/fg-sync.js ../repoA ../repoB -s ae49ed5 commit
 `);
   process.exit(0);
 }
 
+
+
 if (!sourceDir || !targetDir) {
-  console.error("❌ Usage: bun run src/fg-sync.js <source-folder> <target-folder> [commit]");
+  console.error("❌ Usage: bun run src/fg-sync.js <source-folder> <target-folder> [commit] [-s <hash>]");
   process.exit(1);
 }
 
@@ -108,7 +128,20 @@ async function main() {
   // List missing commits: commits in source that are NOT in target
   // Use hashes, not branch names, to avoid ambiguous argument errors
   let logResult;
-  if (tgtTip) {
+  if (startCommit) {
+    // Skip commits from startCommit onwards - use it as basis for sync
+    const skipRange = `${tgtTip}...${srcTip}`;
+    
+    // Compare from startCommit directly to source tip
+    logResult = tgtGit([
+      "log", 
+      `${startCommit}...${srcTip}`, 
+      "--right-only", 
+      "--cherry-pick", 
+      "--oneline", 
+      "--format=%H||%s"
+    ]);
+  } else if (tgtTip) {
     // Both sides have commits — use cherry-pick to skip equivalent patches
     logResult = tgtGit(
       ["log", `${tgtTip}...${srcTip}`, "--right-only", "--cherry-pick", "--oneline", "--format=%H||%s"]

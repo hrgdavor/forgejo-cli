@@ -26,12 +26,13 @@ bun run src/fg-log.js --help       # show help
 
 ```bash
 $ bun run src/fg-log.js
-PR #42: https://git.example.com/owner/repo/pulls/42
-   Commit: fix login flow
-   Commit: add tests
-PR #43: https://git.example.com/owner/repo/pulls/43
-   Commit: update docs
+#42 Daily ByteBufferPool pool cleanup for jetty
+   Commit: backend: Daily ByteBufferPool pool cleanup for jetty
+#43 Fix regression for campaign items
+   Commit: backend: fix regression for campaign items without task
 ```
+
+When a commit is logged via `red-commit.js`, the ticket title is fetched from Redmine and stored as a header line (`#<ticket> <title>`) so the daily log displays the title alongside the ticket number.
 
 ## Example (day-by-day grouped view)
 
@@ -39,13 +40,12 @@ PR #43: https://git.example.com/owner/repo/pulls/43
 $ bun run src/fg-log.js 2
 
 === 2026-08-03 ===
-PR #42: https://git.example.com/owner/repo/pulls/42
-   Commit: fix login flow
-   Commit: add tests
+#42 Daily ByteBufferPool pool cleanup for jetty
+   Commit: backend: Daily ByteBufferPool pool cleanup for jetty
 
 === 2026-08-02 ===
-PR #40: https://git.example.com/owner/repo/pulls/40
-   Commit: initial draft
+#40 Fix regression for campaign items
+   Commit: backend: fix regression for campaign items without task
 ```
 
 ## Example (raw view)
@@ -53,7 +53,7 @@ PR #40: https://git.example.com/owner/repo/pulls/40
 ```bash
 $ bun run src/fg-log.js 1 raw
 Log file: C:\Users\you\.forgejo-cli\log
-2026-08-03T09:20:20.000Z PR #42: https://git.example.com/owner/repo/pulls/42
+2026-08-03T09:20:20.000Z #42 Daily ByteBufferPool pool cleanup for jetty
 2026-08-03T09:20:21.000Z Commit: fix login flow
 ```
 
@@ -62,8 +62,8 @@ Log file: C:\Users\you\.forgejo-cli\log
 Each line is a JSON object:
 
 ```json
-{"ts":"2026-08-03T09:20:20.000Z","msg":"PR #42: https://git.example.com/owner/repo/pulls/42","ticket":"12345"}
-{"ts":"2026-08-03T09:20:21.000Z","msg":"Commit: fix login flow","ticket":"12345"}
+{"ts":"2026-08-03T09:20:20.000Z","msg":"#42 Daily ByteBufferPool pool cleanup for jetty","ticket":"42"}
+{"ts":"2026-08-03T09:20:21.000Z","msg":"Commit: fix login flow","ticket":"42"}
 ```
 
 | Key | Description |
@@ -71,6 +71,10 @@ Each line is a JSON object:
 | `ts` | ISO-8601 timestamp of when the activity happened |
 | `msg` | The activity message |
 | `ticket` | (optional) Redmine ticket number the activity relates to |
+
+There are two types of entries per ticket:
+- **Header**: `#<ticket> <title>` — fetched from Redmine, used by `fg-log.js` as the group header
+- **Action**: e.g. `Commit: ...` or `PR #...` — the actual activity description
 
 ## Where the log is stored
 
