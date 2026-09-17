@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { getRepoContext, getHeaders } from "./forgejo-utils.js";
 import { info, fail, openBrowser } from "./utils.js";
+import { extractTicketFromBranch } from "./util/redmine/extractTicketFromBranch.js";
 
 
 // - Help ────────────────────────────────────────────────────────────────────
@@ -87,8 +88,7 @@ async function main() {
         info(`Branch "${branchName}" is the default base branch — opening directly.`);
     } else {
         info(`Searching for PR on branch "${branchName}"...`);
-        const ticketMatch = branchName.match(/^(\d+)/);
-        const ticketNumber = ticketMatch ? ticketMatch[1] : null;
+        const ticketNumber = extractTicketFromBranch(branchName);
 
         const headers = getHeaders(true);
         const apiUrl = (path) => `${baseUrl}${path}`;
