@@ -30,7 +30,10 @@ Stacked PR management, safe merging/retargeting, and commit/patch-id origin trac
 | `fg-find-commit-origin.js` | Trace commit origin across branches and PRs - [doc](doc/fg-find-commit-origin.md) |
 | `fg-branch-diff.js` | Compare branches by patch content (not just SHA) - [doc](doc/fg-branch-diff.md) |
 | `fg-branch-parents.js` | Print fork-parent chain for a branch - [doc](doc/fg-branch-parents.md) |
+| `fg-open.js` | Open the current branch or its PR in the browser - [doc](doc/fg-open.md) |
 | `fg-sync.js` | Sync branches/tags between two repos - [doc](doc/fg-sync.md) |
+| `fg-pull.js` | Batch-pull commits from upstream into current branch - [doc](doc/fg-pull.md) |
+| `fg-log.js` | View activity log written by forgejo-cli commands - [doc](doc/fg-log.md) |
 
 ### Redmine Integration
 
@@ -38,6 +41,7 @@ Stacked PR management, safe merging/retargeting, and commit/patch-id origin trac
 |------|-------------|
 | `red-commit.js` | Commit with automatic Redmine issue notes (also: `--hook` for post-commit, `-f` for force) - [doc](doc/red-commit.md) |
 | `red-pr.js` | Create branch + PR from a Redmine ticket - [doc](doc/red-pr.md) |
+| `red-open.js` | Open the current Redmine ticket (from branch name) in the browser - [doc](doc/red-open.md) |
 
 ### Other Utilities
 
