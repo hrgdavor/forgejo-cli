@@ -1,13 +1,83 @@
 import { spawnSync } from "bun";
 
-// 1. Parse command line arguments
-const searchTerm = Bun.argv[2];
-const targetBranch = Bun.argv[3]; // Optional third parameter
-const gitHashRegex = /^[0-9a-fA-F]{7,40}$/
+const rawArgs = Bun.argv.slice(2);
+const gitHashRegex = /^[0-9a-fA-F]{7,40}$/;
+
+// ── Mode: --contains <sha> ──────────────────────────────────────────────────
+// Given a commit SHA, find every local + remote-tracking branch that contains it.
+// Usage:  bun run src/gsearch.js --contains <sha>
+const containsIdx = rawArgs.findIndex(a => a === "--contains" || a === "-c");
+
+if (containsIdx !== -1) {
+    const sha = rawArgs[containsIdx + 1];
+
+    if (!sha || !gitHashRegex.test(sha)) {
+        console.error("❌ Please provide a valid commit SHA (7-40 hex characters).");
+        console.log("   Usage: bun run src/gsearch.js -c <sha>");
+        process.exit(1);
+    }
+
+    // Full SHA so git branch --contains accepts it without ambiguity
+    const fullProc = spawnSync(["git", "rev-parse", sha]);
+    if (fullProc.exitCode !== 0) {
+        console.error(`❌ Could not resolve "${sha}" to a commit. Are you inside a Git repository?`);
+        process.exit(1);
+    }
+    const fullHash = fullProc.stdout.toString().trim();
+    if (!fullHash || fullHash.includes("fatal")) {
+        console.error(`❌ Commit "${sha}" not found in this repository.`);
+        process.exit(1);
+    }
+
+    const label = fullHash.length === 40 ? fullHash : `${sha} → ${fullHash}`;
+    console.log(`\n🔍 Branches containing commit ${label}:`);
+
+    const branchProc = spawnSync(["git", "branch", "-a", `--contains=${fullHash}`]);
+    if (branchProc.exitCode !== 0) {
+        console.error(`❌ git branch --contains failed.`);
+        process.exit(1);
+    }
+
+    const branches = branchProc.stdout
+        .toString()
+        .split("\n")
+        .map(b => b.trim())
+        .filter(b => b.length > 0)
+        .map(b => b.replace(/^\* /, "")) // drop active-branch asterisk
+        .filter(b => !b.includes(" -> ")); // drop "origin/HEAD -> origin/main"
+
+    if (branches.length === 0) {
+        console.log("   (no branches contain this commit)");
+        process.exit(0);
+    }
+
+    // Separate local vs remote-tracking for readability
+    const local = branches.filter(b => !b.startsWith("remotes/"));
+    const remote = branches.filter(b => b.startsWith("remotes/")).map(b => b.replace(/^remotes\//, ""));
+
+    if (local.length > 0) {
+        console.log("\n   🌿 Local:");
+        local.forEach(b => console.log(`      ${b}`));
+    }
+    if (remote.length > 0) {
+        console.log("\n   🌐 Remote-tracking:");
+        remote.forEach(b => console.log(`      ${b}`));
+    }
+
+    console.log(`\n   Total: ${branches.length} branch(es)\n`);
+    process.exit(0);
+}
+
+// ── Mode: search by message or hash ─────────────────────────────────────────
+
+const searchTerm = rawArgs[0];
+const targetBranch = rawArgs[1]; // Optional second parameter
 
 if (!searchTerm) {
-    console.error("❌ Please provide a commit message search term.");
-    console.log("Usage: bun run search-commits.js \"search term\" [optional_target_branch]");
+    console.error("❌ Please provide a commit message search term, or use -c <sha> to find branches containing a commit.");
+    console.log("Usage:");
+    console.log("  bun run src/gsearch.js \"search term\" [optional_target_branch]");
+    console.log("  bun run src/gsearch.js -c <commit-sha>              # find branches containing this commit");
     process.exit(1);
 }
 
