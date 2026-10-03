@@ -23,7 +23,7 @@ import {
     validateTicketNumber, getCurrentBranch, promptChoice,
     checkExistingBranch, createBranch, pushBranch, retryPushBranch,
     prInfoText, appendRedminePrField, getRedmineConfig,
-    checkForgejoAvailability, findPrForBranch, checkoutBranch
+    checkForgejoAvailability, findPrForBranch, checkoutBranch, hasUncommittedChanges
 } from "./red-utils.js";
 
 
@@ -88,27 +88,36 @@ async function main() {
     console.log(`🌿 New branch     : ${branchName}`);
     console.log("");
 
-    // If a PR already exists for this branch, offer to just switch to it
+    // If a PR already exists for this branch, offer to just switch to it -
+    // but only when the worktree is clean, otherwise the checkout would fail
+    // or drag uncommitted work along.
     const existingPr = await findPrForBranch(branchName);
     if (existingPr) {
         info(`PR #${existingPr.number} already exists for branch "${branchName}".`);
-        const switchToPr = await promptChoice(
-            `Switch to branch "${branchName}"? (y/N) `,
-            input => input === "y" || input === "yes"
-        );
-        if (switchToPr) {
-            checkoutBranch(branchName);
-            if (!hasPrActivityForTicketToday(ticketNumber)) {
-                logActivity(`#${ticketNumber} ${title}`, ticketNumber);
-            }
+        if (hasUncommittedChanges()) {
+            console.log("⚠️  Uncommitted changes in the working tree - skipping the checkout offer.");
+            console.log("   Commit or stash them, then re-run to switch to the branch.");
+            console.log("Continuing with PR creation...");
             console.log("");
-            console.log("Done! 🎉");
-            console.log(`   Branch : ${branchName}`);
-            console.log(`   PR     : ${existingPr.html_url}`);
-            process.exit(0);
+        } else {
+            const switchToPr = await promptChoice(
+                `Switch to branch "${branchName}"? (y/N) `,
+                input => input === "y" || input === "yes"
+            );
+            if (switchToPr) {
+                checkoutBranch(branchName);
+                if (!hasPrActivityForTicketToday(ticketNumber)) {
+                    logActivity(`#${ticketNumber} ${title}`, ticketNumber);
+                }
+                console.log("");
+                console.log("Done! 🎉");
+                console.log(`   Branch : ${branchName}`);
+                console.log(`   PR     : ${existingPr.html_url}`);
+                process.exit(0);
+            }
+            console.log("Continuing with PR creation...");
+            console.log("");
         }
-        console.log("Continuing with PR creation...");
-        console.log("");
     }
 
     let prTarget = defaultBaseBranch;

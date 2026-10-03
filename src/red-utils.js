@@ -25,3 +25,4 @@ export { createBranch } from "./util/git/createBranch.js";
 export { pushBranch } from "./util/git/pushBranch.js";
 export { retryPushBranch } from "./util/git/retryPushBranch.js";
 export { checkoutBranch } from "./util/git/checkoutBranch.js";
+export { hasUncommittedChanges } from "./util/git/hasUncommittedChanges.js";
