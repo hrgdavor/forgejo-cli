@@ -133,6 +133,7 @@ async function alignPr(prNumber) {
     const merge = spawnSync([
         "git", "merge", `origin/${baseRef}`,
         "--no-ff",
+        "-Xignore-space-change",
         "-m", `Merge branch '${baseRef}' into ${headRef}`
     ], { stdio: ["pipe", "pipe", "pipe"] });
 
@@ -162,7 +163,7 @@ async function alignPr(prNumber) {
         if (/permission|protected|fork/i.test(pushErr)) {
             console.error(`⚠️  Cannot push to "${headRef}" — this PR is from a fork or branch is protected.`);
             console.error(`   Please merge and push locally:`);
-            console.error(`   git checkout ${headRef} && git merge ${baseRef} --no-ff -m "Merge branch '${baseRef}' into ${headRef}" && git push --force-with-lease origin ${headRef}`);
+            console.error(`   git checkout ${headRef} && git merge ${baseRef} --no-ff -Xignore-space-change -m "Merge branch '${baseRef}' into ${headRef}" && git push --force-with-lease origin ${headRef}`);
         } else {
             console.error(`❌ Force-push failed for PR #${prNumber}: ${pushErr}`);
         }
@@ -289,6 +290,8 @@ async function main() {
     }
 
     let alignedCount = 0;
+    const notReadyPrs = [];
+    const mergeFailedPrs = [];
 
     for (const pr of prsToProcess) {
         const details = prDetailsMap.get(pr.number);
@@ -296,11 +299,13 @@ async function main() {
 
         if (classification.kind === "blocked") {
             console.log(`🚫 Skipping PR #${pr.number} (state: blocked): ${pr.title}`);
+            notReadyPrs.push({ number: pr.number, reason: "blocked", title: pr.title });
             continue;
         }
 
         if (classification.kind === "unknown") {
             console.error(`⚠️  PR #${pr.number}: cannot determine alignment state (${classification.reason}) — skipping: ${pr.title}`);
+            notReadyPrs.push({ number: pr.number, reason: `unknown:${classification.reason}`, title: pr.title });
             continue;
         }
 
@@ -314,6 +319,7 @@ async function main() {
 
         if (!isMergeable(details)) {
             console.log(`🚫 Skipping PR #${pr.number} (state: not mergeable per API): ${pr.title}`);
+            notReadyPrs.push({ number: pr.number, reason: "not-mergeable", title: pr.title });
             continue;
         }
 
@@ -322,10 +328,25 @@ async function main() {
         if (success) {
             ok(`PR #${pr.number} successfully aligned with base and pushed!`);
             alignedCount++;
+        } else {
+            mergeFailedPrs.push({ number: pr.number, title: pr.title });
         }
     }
 
     console.log(`\n🏁 Done! Successfully aligned ${alignedCount} PR(s).`);
+
+    if (notReadyPrs.length > 0) {
+        console.log("\n📋 Not ready / skipped:");
+        for (const entry of notReadyPrs) {
+            console.log(`  #${entry.number} [${entry.reason}] ${entry.title}`);
+        }
+    }
+    if (mergeFailedPrs.length > 0) {
+        console.log("\n❌ Merge attempted but failed:");
+        for (const entry of mergeFailedPrs) {
+            console.log(`  #${entry.number} ${entry.title}`);
+        }
+    }
 }
 
 main().catch(err => {
