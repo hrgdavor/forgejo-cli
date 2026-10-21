@@ -20,6 +20,6 @@ See [doc/commit-cache.md](commit-cache.md) for the full structure, content, incr
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `FORGEJO_TOKEN` | For PR sync | Forgejo/Gitea personal access token (not needed with `--no-prs`) |
+| Variable        | Required    | Description                                                                                 |
+| --------------- | ----------- | ------------------------------------------------------------------------------------------- |
+| `FORGEJO_TOKEN` | For PR sync | Forgejo/Gitea token (from `FORGEJO_TOKEN` or `~/.forgejo-cli/<domain>.json`; not needed with `--no-prs`) |

@@ -26,26 +26,26 @@ bun run src/fg-prefix.js - 123 -n
 
 ## Flags
 
-| Flag | Description |
-|------|-------------|
+| Flag              | Description                               |
+| ----------------- | ----------------------------------------- |
 | `-n`, `--dry-run` | Print old and new titles without patching |
-| `--all` | Apply to every open PR |
-| `-h`, `--help` | Show help |
+| `--all`           | Apply to every open PR                    |
+| `-h`, `--help`    | Show help                                 |
 
 ## What counts as a prefix
 
 A prefix is a run of letters and digits at the very start of the title with a colon immediately after it, optionally followed by a space. No spaces or punctuation are allowed inside it.
 
-| Title | Treated as prefix | Result of stripping |
-|-------|-------------------|----------------------|
-| `WIP: Fix crash in parser` | `WIP:` | `Fix crash in parser` |
-| `W:Fix crash in parser` | `W:` | `Fix crash in parser` |
-| `Draft: new API` | `Draft:` | `new API` |
-| `fix parser: handle empty input` | none | unchanged — the colon is not a prefix |
-| `refactor: a: b` | `refactor:` | `a: b` — only the leading prefix is removed |
-| `10:30 standup notes` | none | unchanged — purely numeric starts are not prefixes |
-| `CVE-2024-1234: security fix` | none | unchanged — the hyphen breaks the prefix |
-| `[WIP] old style` | none | unchanged — brackets are not part of the prefix form |
+| Title                            | Treated as prefix   | Result of stripping                                  |
+| -------------------------------- | ------------------- | ---------------------------------------------------- |
+| `WIP: Fix crash in parser`       | `WIP:`              | `Fix crash in parser`                                |
+| `W:Fix crash in parser`          | `W:`                | `Fix crash in parser`                                |
+| `Draft: new API`                 | `Draft:`            | `new API`                                            |
+| `fix parser: handle empty input` | none                | unchanged — the colon is not a prefix                |
+| `refactor: a: b`                 | `refactor:`         | `a: b` — only the leading prefix is removed          |
+| `10:30 standup notes`            | none                | unchanged — purely numeric starts are not prefixes   |
+| `CVE-2024-1234: security fix`    | none                | unchanged — the hyphen breaks the prefix             |
+| `[WIP] old style`                | none                | unchanged — brackets are not part of the prefix form |
 
 ## Behaviour
 
@@ -56,6 +56,6 @@ A prefix is a run of letters and digits at the very start of the title with a co
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `FORGEJO_TOKEN` | Yes | Forgejo/Gitea personal access token |
+| Variable        | Required   | Description                                                                  |
+| --------------- | ---------- | ---------------------------------------------------------------------------- |
+| `FORGEJO_TOKEN` | Yes        | Forgejo/Gitea token (from `FORGEJO_TOKEN` or `~/.forgejo-cli/<domain>.json`) |

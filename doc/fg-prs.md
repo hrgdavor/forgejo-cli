@@ -20,6 +20,6 @@ bun run src/fg-prs.js -c
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `FORGEJO_TOKEN` | Yes | Forgejo/Gitea personal access token |
+| Variable        | Required   | Description                                                                  |
+| --------------- | ---------- | ---------------------------------------------------------------------------- |
+| `FORGEJO_TOKEN` | Yes        | Forgejo/Gitea token (from `FORGEJO_TOKEN` or `~/.forgejo-cli/<domain>.json`) |

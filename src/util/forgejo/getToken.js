@@ -1,6 +1,9 @@
-// getToken.js - Lazily reads FORGEJO_TOKEN from the environment or OS vault
-import { getSecret } from "../general/getSecret.js";
+// getToken.js - Resolve the Forgejo/Gitea token for the current repository
+//
+// The domain file's token wins; FORGEJO_TOKEN, ~/.forgejo-cli.env, and the OS
+// vault follow. See instanceConfig.js.
+import { getInstanceToken } from "./instanceConfig.js";
 
 export function getToken(gitGuiFriendly = false) {
-    return getSecret("forgejo-token", "FORGEJO_TOKEN", true, gitGuiFriendly);
+    return getInstanceToken(gitGuiFriendly);
 }

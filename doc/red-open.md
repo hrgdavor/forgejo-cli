@@ -26,9 +26,9 @@ Branches must start with a ticket number, e.g. `12345-fix-bug`. The script uses
 
 ## Secrets
 
-| Variable | Description |
-|----------|-------------|
+| Variable      | Description                                                            |
+| ------------- | ---------------------------------------------------------------------- |
 | `REDMINE_URL` | Base URL of your Redmine instance (e.g. `https://redmine.example.com`) |
 
 Secrets are resolved in order: environment variable → `~/.forgejo-cli.env` → OS credential vault.
-See the [Secrets Setup](../README.md#secrets-setup) section in the README for details.
+See the [Fallback sources](../README.md#fallback-sources) section in the README for details.

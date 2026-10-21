@@ -13,24 +13,30 @@ import { join } from "path";
 const ENV_FILE = join(homedir(), ".forgejo-cli.env");
 
 /**
- * Read a secret from env var, ~/.forgejo-cli.env, or the OS credential vault.
+ * Like getSecret(), but also reports where the value came from, so callers can
+ * show diagnostics without ever printing the secret itself.
  *
  * @param {string} serviceName  - The service name used when storing the secret
  * @param {string} envVarName   - The env var name
- * @param {boolean} [required=true] - If true, exits with an error when not found
- * @param {boolean} [gitGuiFriendly=false] - When true, never calls process.exit() and skips vault
- * @returns {string|null} The secret value, or null if not found
+ * @param {{required?: boolean, gitGuiFriendly?: boolean}} [options]
+ * @returns {{value: string, source: string}|null}
  */
-export function getSecret(serviceName, envVarName, required = true, gitGuiFriendly = false) {
-    const fromEnv = process.env[envVarName];
-    if (fromEnv) return fromEnv;
+export function getSecretInfo(serviceName, envVarName, { required = true, gitGuiFriendly = false } = {}) {
+    const fromEnv = envVarName ? process.env[envVarName] : null;
+    if (fromEnv) {
+        return { value: fromEnv, source: `environment variable ${envVarName}` };
+    }
 
     const fromFile = readFromEnvFile(envVarName);
-    if (fromFile) return fromFile;
+    if (fromFile) {
+        return { value: fromFile, source: "~/.forgejo-cli.env" };
+    }
 
     if (!gitGuiFriendly) {
         const fromVault = readFromVault(serviceName);
-        if (fromVault) return fromVault;
+        if (fromVault) {
+            return { value: fromVault, source: `OS vault (${serviceName})` };
+        }
     }
 
     if (!required || gitGuiFriendly) return null;
@@ -44,6 +50,20 @@ export function getSecret(serviceName, envVarName, required = true, gitGuiFriend
     console.error(`        Windows: cmdkey /generic:${serviceName} /user:%USERNAME% /pass:YOUR_SECRET`);
     console.error(`        Linux:   secret-tool store --label="${serviceName}" service ${serviceName} username "$USER"`);
     process.exit(1);
+}
+
+/**
+ * Read a secret from env var, ~/.forgejo-cli.env, or the OS credential vault.
+ *
+ * @param {string} serviceName  - The service name used when storing the secret
+ * @param {string} envVarName   - The env var name
+ * @param {boolean} [required=true] - If true, exits with an error when not found
+ * @param {boolean} [gitGuiFriendly=false] - When true, never calls process.exit() and skips vault
+ * @returns {string|null} The secret value, or null if not found
+ */
+export function getSecret(serviceName, envVarName, required = true, gitGuiFriendly = false) {
+    const info = getSecretInfo(serviceName, envVarName, { required, gitGuiFriendly });
+    return info ? info.value : null;
 }
 
 /**

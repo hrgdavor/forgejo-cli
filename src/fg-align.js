@@ -1,6 +1,7 @@
-﻿#!/usr/bin/env bun
+#!/usr/bin/env bun
 // fg-align.js
 import { getRepoContext, getHeaders, fetchAllPages } from "./forgejo-utils.js";
+import { runForgejoAuthOnly } from "./util/forgejo/authReport.js";
 import { spawnSync } from "bun";
 import { fail, info, ok } from "./utils.js";
 
@@ -21,6 +22,8 @@ function printHelp() {
     console.log("  all                    Merge base into every open PR that is mergeable and push");
     console.log("  wip                    Try to merge base into all WIP PRs (mergeable=false), report conflicts");
     console.log("  <PR-numbers>           Numeric PR IDs, comma-separated (e.g. 123,456,789)");
+    console.log("  --auth-only            Verify Forgejo auth for this repository, then exit");
+    console.log("  --as <actor>           Act as a named Gitea actor (e.g. a bot)");
     console.log("  --help, -h             Show this help");
     console.log("");
     console.log("Environment variables:");
@@ -183,6 +186,10 @@ async function main() {
 
     if (firstArg === "--help" || firstArg === "-h") {
         printHelp();
+    }
+
+    if (args.includes("--auth-only")) {
+        process.exit(await runForgejoAuthOnly());
     }
 
     // Keep local refs up to date - required for accurate merge-base checks

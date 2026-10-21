@@ -140,10 +140,11 @@ If they differ, the base branch has advanced beyond the merge base, meaning the 
 
 ## Utility modules
 
-| Module                                      | File                                 | Description                                                      |
-| ------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------- |
-| `getRepoContext()`                          | `util/forgejo/getRepoContext.js`     | Parses `baseUrl`, `owner`, `repo` from the git remote URL        |
-| `getHeaders()`                              | `util/forgejo/getHeaders.js`         | Returns HTTP headers with `Authorization: token {FORGEJO_TOKEN}` |
-| `fetchAllPages(url)`                        | `util/forgejo/fetchAllPages.js`      | Fetches all pages of a paginated API response                    |
-| `fetchPagesUntil(url, predicate)`           | `util/forgejo/fetchPagesUntil.js`    | Fetches pages until a predicate function returns `true`          |
-| `mapWithConcurrency(data, fn, concurrency)` | `util/forgejo/mapWithConcurrency.js` | Maps over data with limited concurrency                          |
+| Module                                      | File                                 | Description                                                                                    |
+| ------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `getRepoContext()`                          | `util/forgejo/getRepoContext.js`     | Resolves `baseUrl`, `owner`, `repo`; URL from `~/.forgejo-cli/<domain>.json` or the git remote |
+| `getHeaders()`                              | `util/forgejo/getHeaders.js`         | Returns HTTP headers with the resolved token (domain file → `FORGEJO_TOKEN` → vault)           |
+| `getInstanceConfig()`                       | `util/forgejo/instanceConfig.js`     | Loads the per-domain integration file, derives the API base URL, and caches the result         |
+| `fetchAllPages(url)`                        | `util/forgejo/fetchAllPages.js`      | Fetches all pages of a paginated API response                                                  |
+| `fetchPagesUntil(url, predicate)`           | `util/forgejo/fetchPagesUntil.js`    | Fetches pages until a predicate function returns `true`                                        |
+| `mapWithConcurrency(data, fn, concurrency)` | `util/forgejo/mapWithConcurrency.js` | Maps over data with limited concurrency                                                        |

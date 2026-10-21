@@ -34,16 +34,16 @@ If the script crashes after creating the branch but before pushing (e.g. network
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `REDMINE_URL` | Yes | Base URL of your Redmine instance (e.g. `https://redmine.example.com`) |
-| `REDMINE_API_KEY` | Yes | Your Redmine API key |
-| `FORGEJO_TOKEN` | Yes | Forgejo/Gitea personal access token |
+| Variable          | Required   | Description                                                                  |
+| ----------------- | ---------- | ---------------------------------------------------------------------------- |
+| `REDMINE_URL`     | Yes        | Base URL of your Redmine instance (e.g. `https://redmine.example.com`)       |
+| `REDMINE_API_KEY` | Yes        | Your Redmine API key                                                         |
+| `FORGEJO_TOKEN`   | Yes        | Forgejo/Gitea token (from `FORGEJO_TOKEN` or `~/.forgejo-cli/<domain>.json`) |
 
 ## Optional `package.json` configuration
 
-| Property | Description |
-|----------|-------------|
-| `"redmine_pr_info_field"` | Numeric ID of a Redmine custom field to update with branch/PR info |
-| `"redmine_pr_info_text"` | Optional text prefix for each new entry (e.g. `"[PR]"`) |
-| `"redmine_pr_default_base_branch"` | Default target branch for the PR (default: `"main"`) |
+| Property                           | Description                                                        |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `"redmine_pr_info_field"`          | Numeric ID of a Redmine custom field to update with branch/PR info |
+| `"redmine_pr_info_text"`           | Optional text prefix for each new entry (e.g. `"[PR]"`)            |
+| `"redmine_pr_default_base_branch"` | Default target branch for the PR (default: `"main"`)               |

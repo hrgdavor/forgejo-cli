@@ -25,9 +25,9 @@ bun run src/fg-find-commit-origin.js --no-sync --no-prs <commit-hash>
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `FORGEJO_TOKEN` | Only for PR sync | Forgejo/Gitea personal access token. If missing, local-only results are still returned (branch + cherry-pick detection works without any token). |
+| Variable        | Required         | Description   |
+| --------------- | ---------------- | ------------- |
+| `FORGEJO_TOKEN` | Only for PR sync | Forgejo/Gitea token (from `FORGEJO_TOKEN` or `~/.forgejo-cli/<domain>.json`). If missing, local-only results are still returned (branch + cherry-pick detection works without any token). |
 
 ## When to use `fg-cherry-cache.js` instead
 

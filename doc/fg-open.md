@@ -17,8 +17,8 @@ bun run src/fg-open.js --help
 
 ## Environment variables
 
-| Variable        | Description                                    |
-|-----------------|------------------------------------------------|
-| `FORGEJO_TOKEN` | Forgejo/Gitea personal access token (optional) |
+| Variable          | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `FORGEJO_TOKEN`   | Forgejo/Gitea token (optional; from `FORGEJO_TOKEN` or `~/.forgejo-cli/<domain>.json`) |
 
-If `FORGEJO_TOKEN` is not set, the script falls back to opening the branch page directly (no API call).
+If no token is configured (domain file, `FORGEJO_TOKEN`, or vault), the script falls back to opening the branch page directly (no API call).

@@ -9,7 +9,20 @@ bun run src/fg-align.js              # list open PRs with mergeable status
 bun run src/fg-align.js all          # merge base into all mergeable PR branches and push
 bun run src/fg-align.js wip          # try to merge base into all WIP PR branches, report conflicts
 bun run src/fg-align.js 123,456      # merge base into specific PR branches and push
+bun run src/fg-align.js --auth-only  # verify Forgejo auth for this repo, then exit
 ```
+
+## Checking auth
+
+`--auth-only` runs the same Forgejo auth check as `fg-pr-check.js --auth-only`:
+it prints the resolved instance, where the token came from, and whether pull
+requests are readable, then exits `0` (working) or `1` (not working). It does
+not fetch, merge, or push anything.
+
+The check asks for PR access (`GET /repos/{owner}/{repo}/pulls`) because that is
+what this tool reads. It does not probe endpoints no command uses, such as
+`/user`. It also cannot prove push permission without attempting a push.
+Use `--as <actor>` to run or check as a bot identity from the domain config.
 
 ## What happens behind the scenes
 
@@ -34,6 +47,6 @@ The local merge uses `--no-ff` so history records the alignment, plus `-Xignore-
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `FORGEJO_TOKEN` | Yes | Forgejo/Gitea personal access token |
+| Variable        | Required   | Description                                                                  |
+| --------------- | ---------- | ---------------------------------------------------------------------------- |
+| `FORGEJO_TOKEN` | Yes        | Forgejo/Gitea token (from `FORGEJO_TOKEN` or `~/.forgejo-cli/<domain>.json`) |

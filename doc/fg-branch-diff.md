@@ -14,6 +14,6 @@ Reports two groups: commits with **no equivalent patch anywhere** in the newer b
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `FORGEJO_TOKEN` | Yes | Forgejo/Gitea personal access token |
+| Variable        | Required   | Description                                                                  |
+| --------------- | ---------- | ---------------------------------------------------------------------------- |
+| `FORGEJO_TOKEN` | Yes        | Forgejo/Gitea token (from `FORGEJO_TOKEN` or `~/.forgejo-cli/<domain>.json`) |
