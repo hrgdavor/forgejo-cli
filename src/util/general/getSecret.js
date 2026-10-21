@@ -46,6 +46,17 @@ export function getSecret(serviceName, envVarName, required = true, gitGuiFriend
     process.exit(1);
 }
 
+/**
+ * Read a plain (non-secret) value from ~/.forgejo-cli.env without touching the
+ * OS vault. Returns null when the file or key is missing.
+ *
+ * @param {string} key - The key to look up
+ * @returns {string|null}
+ */
+export function readEnvFile(key) {
+    return readFromEnvFile(key);
+}
+
 function readFromEnvFile(key) {
     if (!existsSync(ENV_FILE)) return null;
     try {

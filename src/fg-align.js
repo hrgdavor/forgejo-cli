@@ -10,6 +10,7 @@ function printHelp() {
     console.log("Usage:");
     console.log("  bun run src/fg-align.js                - list open PRs with mergeable status");
     console.log("  bun run src/fg-align.js all            - merge base into all mergeable PR branches and push");
+    console.log("  bun run src/fg-align.js wip            - try to merge base into all WIP PR branches and push");
     console.log("  bun run src/fg-align.js <PR-numbers>   - merge base into specific PR branches and push");
     console.log("  bun run src/fg-align.js --help         - show this help message");
     console.log("");
@@ -18,6 +19,7 @@ function printHelp() {
     console.log("");
     console.log("Flags:");
     console.log("  all                    Merge base into every open PR that is mergeable and push");
+    console.log("  wip                    Try to merge base into all WIP PRs (mergeable=false), report conflicts");
     console.log("  <PR-numbers>           Numeric PR IDs, comma-separated (e.g. 123,456,789)");
     console.log("  --help, -h             Show this help");
     console.log("");
@@ -189,12 +191,13 @@ async function main() {
 
     const listOnly = firstArg === "list";
     const shouldAlignAll = firstArg === "all";
+    const shouldAlignWip = firstArg === "wip";
 
     let targetPrIds = [];
-    if (!listOnly && !shouldAlignAll) {
+    if (!listOnly && !shouldAlignAll && !shouldAlignWip) {
         targetPrIds = allArgs.filter(a => /^\d+$/.test(a));
         if (targetPrIds.length === 0) {
-            fail(`Invalid PR IDs. Expected numeric PR IDs, comma-separated list, or "all".`);
+            fail(`Invalid PR IDs. Expected numeric PR IDs, comma-separated list, "all", or "wip".`);
         }
     }
 
@@ -260,14 +263,31 @@ async function main() {
     }
 
     let prsToProcess = [];
-    if (shouldAlignAll) {
+    if (shouldAlignAll || shouldAlignWip) {
         info(`Fetching open PRs for ${owner}/${repo}...`);
         prs = await fetchAllPages(`${baseUrl}/repos/${owner}/${repo}/pulls?state=open`);
         if (prs.length === 0) {
             console.log("✅ No open pull requests found.");
             process.exit(0);
         }
-        prsToProcess = prs;
+        
+        if (shouldAlignWip) {
+            // For wip mode, we need to fetch details to check mergeable status
+            info(`Checking ${prs.length} PRs for WIP status...`);
+            const details = await Promise.all(prs.map(pr => fetchPrDetails(pr.number)));
+            prsToProcess = [];
+            for (let i = 0; i < prs.length; i++) {
+                const pr = prs[i];
+                const detail = details[i];
+                // WIP PRs have mergeable === false
+                if (detail.mergeable === false) {
+                    prsToProcess.push(pr);
+                }
+            }
+            console.log(`📋 Found ${prsToProcess.length} WIP PR(s) out of ${prs.length} open PR(s)`);
+        } else {
+            prsToProcess = prs;
+        }
         prsToProcess.sort((a, b) => (a.user?.login || "").localeCompare(b.user?.login || ""));
     } else {
         for (const prId of targetPrIds) {
@@ -292,12 +312,15 @@ async function main() {
     let alignedCount = 0;
     const notReadyPrs = [];
     const mergeFailedPrs = [];
+    const alignedPrs = [];
 
     for (const pr of prsToProcess) {
         const details = prDetailsMap.get(pr.number);
         const classification = classifyPr(details);
 
-        if (classification.kind === "blocked") {
+        // In wip mode, blocked PRs (mergeable=false, typically WIP) are exactly
+        // what we want to attempt alignment on, so only skip them in other modes.
+        if (!shouldAlignWip && classification.kind === "blocked") {
             console.log(`🚫 Skipping PR #${pr.number} (state: blocked): ${pr.title}`);
             notReadyPrs.push({ number: pr.number, reason: "blocked", title: pr.title });
             continue;
@@ -310,14 +333,15 @@ async function main() {
         }
 
         if (classification.kind === "clean") {
-            if (shouldAlignAll) {
+            if (shouldAlignAll || shouldAlignWip) {
                 continue;
             }
             console.log(`✅ PR #${pr.number} is already up to date with ${classification.baseRef}. Nothing to do.`);
             continue;
         }
 
-        if (!isMergeable(details)) {
+        // For wip mode, skip the isMergeable check since we want to try WIP PRs anyway
+        if (!shouldAlignWip && !isMergeable(details)) {
             console.log(`🚫 Skipping PR #${pr.number} (state: not mergeable per API): ${pr.title}`);
             notReadyPrs.push({ number: pr.number, reason: "not-mergeable", title: pr.title });
             continue;
@@ -328,12 +352,20 @@ async function main() {
         if (success) {
             ok(`PR #${pr.number} successfully aligned with base and pushed!`);
             alignedCount++;
+            alignedPrs.push({ number: pr.number, title: pr.title });
         } else {
             mergeFailedPrs.push({ number: pr.number, title: pr.title });
         }
     }
 
     console.log(`\n🏁 Done! Successfully aligned ${alignedCount} PR(s).`);
+
+    if (shouldAlignWip && alignedPrs.length > 0) {
+        console.log("\n✅ WIP PRs successfully aligned (no conflicts):");
+        for (const entry of alignedPrs) {
+            console.log(`  #${entry.number} ${entry.title}`);
+        }
+    }
 
     if (notReadyPrs.length > 0) {
         console.log("\n📋 Not ready / skipped:");

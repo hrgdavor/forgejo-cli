@@ -41,18 +41,20 @@ This document describes the Forgejo/Gitea API endpoints and fields used by the `
 
 ### `GET /repos/{owner}/{repo}/pulls/{number}` — Get single PR details
 
-**Used by:** `fg-align.js`, `fg-prs.js` (with `--check`)
+**Used by:** `fg-align.js`, `fg-prs.js` (with `--check`), `fg-review.js`
 
 **Response fields used:**
 
 | Field             | Type                | Description                                                   | Used by                                                    |
 | ----------------- | ------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
-| `number`          | `number`            | PR number                                                     | `fg-align.js`                                              |
-| `title`           | `string`            | PR title                                                      | `fg-align.js`                                              |
-| `state`           | `string`            | `"open"` or `"closed"`                                        | `fg-align.js`                                              |
+| `number`          | `number`            | PR number                                                     | `fg-align.js`, `fg-review.js`                              |
+| `title`           | `string`            | PR title                                                      | `fg-align.js`, `fg-review.js`                              |
+| `body`            | `string`            | PR description (used as OCR review background)                | `fg-review.js`                                             |
+| `state`           | `string`            | `"open"` or `"closed"`                                        | `fg-align.js`, `fg-review.js`                              |
 | `user.login`      | `string`            | Author username                                               | `fg-align.js`                                              |
-| `head.ref`        | `string`            | Source branch name                                            | `fg-align.js`                                              |
-| `base.ref`        | `string`            | Target branch name                                            | `fg-align.js`                                              |
+| `head.ref`        | `string`            | Source branch name                                            | `fg-align.js`, `fg-review.js`                              |
+| `head.sha`        | `string` (SHA)      | Latest commit SHA of the PR head                              | `fg-review.js`                                             |
+| `base.ref`        | `string`            | Target branch name                                            | `fg-align.js`, `fg-review.js`                              |
 | `base.sha`        | `string` (SHA)      | Latest commit SHA of the base branch                          | `fg-align.js`                                              |
 | `mergeable`       | `boolean            | null`                                                         | `true` = mergeable, `false` = conflict, `null` = unchecked | `fg-align.js`, `fg-prs.js` |
 | `mergeable_state` | `string`            | `"clean"`, `"behind"`, `"blocked"`, `"conflict"`, `"unknown"` | `fg-align.js` *(fallback)*                                 |

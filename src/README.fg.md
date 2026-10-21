@@ -8,37 +8,43 @@ Per-tool documentation has moved to [doc/](../doc/).
 
 ### Stack & PR Management
 
-| Tool | Description | Doc |
-|------|-------------|-----|
-| `fg-stack.js` | Create a stacked PR chain from a commit range | [doc/fg-stack.md](../doc/fg-stack.md) |
-| `fg-rebase.js` | Rebase an entire stacked PR chain | [doc/fg-rebase.md](../doc/fg-rebase.md) |
-| `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged | [doc/fg-retarget.md](../doc/fg-retarget.md) |
-| `fg-align.js` | Align PR branches with their base (rebase if no conflicts) | [doc/fg-align.md](../doc/fg-align.md) |
-| `fg-prs.js` | List PRs with optional conflict check | [doc/fg-prs.md](../doc/fg-prs.md) |
+| Tool             | Description                                                | Doc                                         |
+| ---------------- | ---------------------------------------------------------- | ------------------------------------------- |
+| `fg-stack.js`    | Create a stacked PR chain from a commit range              | [doc/fg-stack.md](../doc/fg-stack.md)       |
+| `fg-rebase.js`   | Rebase an entire stacked PR chain                          | [doc/fg-rebase.md](../doc/fg-rebase.md)     |
+| `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged           | [doc/fg-retarget.md](../doc/fg-retarget.md) |
+| `fg-align.js`    | Align PR branches with their base (rebase if no conflicts) | [doc/fg-align.md](../doc/fg-align.md)       |
+| `fg-prs.js`      | List PRs with optional conflict check                      | [doc/fg-prs.md](../doc/fg-prs.md)           |
 
 ### Commit Origin & Cache Tooling
 
-| Tool | Description | Doc |
-|------|-------------|-----|
-| `fg-cherry-cache.js` | Build/refresh the commit → patch-id → branch cache | [doc/fg-cherry-cache.md](../doc/fg-cherry-cache.md) |
-| `fg-cherry.js` | Find which branches contain a commit (offline) | [doc/fg-cherry.md](../doc/fg-cherry.md) |
-| `fg-find-commit-origin.js` | Trace commit origin across branches and PRs | [doc/fg-find-commit-origin.md](../doc/fg-find-commit-origin.md) |
-| `fg-branch-diff.js` | Compare branches by patch content | [doc/fg-branch-diff.md](../doc/fg-branch-diff.md) |
-| `fg-branch-parents.js` | Print fork-parent chain for a branch | [doc/fg-branch-parents.md](../doc/fg-branch-parents.md) |
-| `fg-sync.js` | Sync branches/tags between two repos | [doc/fg-sync.md](../doc/fg-sync.md) |
-| `gsearch.js` | Search commit messages across all branches | [doc/gsearch.md](../doc/gsearch.md) |
+| Tool                       | Description                                        | Doc                                                             |
+| -------------------------- | -------------------------------------------------- | --------------------------------------------------------------- |
+| `fg-cherry-cache.js`       | Build/refresh the commit → patch-id → branch cache | [doc/fg-cherry-cache.md](../doc/fg-cherry-cache.md)             |
+| `fg-cherry.js`             | Find which branches contain a commit (offline)     | [doc/fg-cherry.md](../doc/fg-cherry.md)                         |
+| `fg-find-commit-origin.js` | Trace commit origin across branches and PRs        | [doc/fg-find-commit-origin.md](../doc/fg-find-commit-origin.md) |
+| `fg-branch-diff.js`        | Compare branches by patch content                  | [doc/fg-branch-diff.md](../doc/fg-branch-diff.md)               |
+| `fg-branch-parents.js`     | Print fork-parent chain for a branch               | [doc/fg-branch-parents.md](../doc/fg-branch-parents.md)         |
+| `fg-sync.js`               | Sync branches/tags between two repos               | [doc/fg-sync.md](../doc/fg-sync.md)                             |
+| `gsearch.js`               | Search commit messages across all branches         | [doc/gsearch.md](../doc/gsearch.md)                             |
+
+### Code Review
+
+| Tool           | Description                                  | Doc                                     |
+| -------------- | -------------------------------------------- | --------------------------------------- |
+| `fg-review.js` | Run Alibaba open-code-review (`ocr`) on a PR | [doc/fg-review.md](../doc/fg-review.md) |
 
 ### Redmine Integration
 
-| Tool | Description | Doc |
-|------|-------------|-----|
+| Tool            | Description                               | Doc                                       |
+| --------------- | ----------------------------------------- | ----------------------------------------- |
 | `red-commit.js` | Commit with automatic Redmine issue notes | [doc/red-commit.md](../doc/red-commit.md) |
-| `red-pr.js` | Create branch + PR from a Redmine ticket | [doc/red-pr.md](../doc/red-pr.md) |
+| `red-pr.js`     | Create branch + PR from a Redmine ticket  | [doc/red-pr.md](../doc/red-pr.md)         |
 
 ### Cache internals
 
-| Document | Description |
-|----------|-------------|
+| Document                                      | Description                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------- |
 | [doc/commit-cache.md](../doc/commit-cache.md) | Full structure, content, incremental sync, and freshness trade-offs |
 
 ## Shared modules
@@ -50,11 +56,20 @@ Per-tool documentation has moved to [doc/](../doc/).
 
 ## Environment Variables
 
-| Variable | Required by | Description |
-|----------|-------------|-------------|
-| `FORGEJO_TOKEN` | All forgejo-based tools (fg-*.js, red-pr.js) | Forgejo/Gitea personal access token |
-| `REDMINE_URL` | red-commit.js, red-pr.js | Base URL of your Redmine instance |
-| `REDMINE_API_KEY` | red-commit.js, red-pr.js | Your Redmine API key |
+| Variable          | Required by                                  | Description                         |
+| ----------------- | -------------------------------------------- | ----------------------------------- |
+| `FORGEJO_TOKEN`   | All forgejo-based tools (fg-*.js, red-pr.js) | Forgejo/Gitea personal access token |
+| `REDMINE_URL`     | red-commit.js, red-pr.js                     | Base URL of your Redmine instance   |
+| `REDMINE_API_KEY` | red-commit.js, red-pr.js                     | Your Redmine API key                |
+| `OCR_LLM_URL`     | fg-review.js*                                | Model endpoint for open-code-review |
+| `OCR_LLM_TOKEN`   | fg-review.js*                                | Model API key for open-code-review  |
+| `OCR_LLM_MODEL`   | fg-review.js*                                | Model name for open-code-review     |
+
+\* Required only for env-based model setup; otherwise `ocr` uses
+`~/.opencodereview/config.json`. A saved OCR provider takes precedence over
+the environment; `fg-review.js` warns when that happens. Pass `--url`,
+`--token` (prefer `--token-stdin`), `--model`, or `--protocol` to override the
+endpoint for a single run. See [doc/fg-review.md](../doc/fg-review.md).
 
 To set them temporarily (PowerShell):
 

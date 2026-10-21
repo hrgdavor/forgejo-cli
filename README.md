@@ -18,46 +18,52 @@ All tools are Bun scripts in [src/](src/). Per-tool documentation is in [doc/](d
 
 Stacked PR management, safe merging/retargeting, and commit/patch-id origin tracing against a Forgejo/Gitea server.
 
-| Tool | Description |
-|------|-------------|
-| `fg-stack.js` | Create a stacked PR chain from a commit range - [doc](doc/fg-stack.md) |
-| `fg-rebase.js` | Rebase an entire stacked PR chain - [doc](doc/fg-rebase.md) |
-| `fg-retarget.js` | Auto-retarget a stack after lower PRs are merged - [doc](doc/fg-retarget.md) |
-| `fg-align.js` | Align PR branches with their base (rebase if no conflicts) - [doc](doc/fg-align.md) |
-| `fg-prs.js` | List PRs for current/stack branches with optional conflict check - [doc](doc/fg-prs.md) |
-| `fg-cherry.js` | Find which branches contain a commit (local cache, offline) - [doc](doc/fg-cherry.md) |
-| `fg-cherry-cache.js` | Build/refresh the commit → patch-id → branch cache - [doc](doc/fg-cherry-cache.md) |
-| `fg-find-commit-origin.js` | Trace commit origin across branches and PRs - [doc](doc/fg-find-commit-origin.md) |
-| `fg-branch-diff.js` | Compare branches by patch content (not just SHA) - [doc](doc/fg-branch-diff.md) |
-| `fg-branch-parents.js` | Print fork-parent chain for a branch - [doc](doc/fg-branch-parents.md) |
-| `fg-open.js` | Open the current branch or its PR in the browser - [doc](doc/fg-open.md) |
-| `fg-sync.js` | Sync branches/tags between two repos - [doc](doc/fg-sync.md) |
-| `fg-pull.js` | Batch-pull commits from upstream into current branch - [doc](doc/fg-pull.md) |
-| `fg-log.js` | View activity log written by forgejo-cli commands - [doc](doc/fg-log.md) |
+| Tool                       | Description                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `fg-stack.js`              | Create a stacked PR chain from a commit range - [doc](doc/fg-stack.md)                  |
+| `fg-rebase.js`             | Rebase an entire stacked PR chain - [doc](doc/fg-rebase.md)                             |
+| `fg-retarget.js`           | Auto-retarget a stack after lower PRs are merged - [doc](doc/fg-retarget.md)            |
+| `fg-align.js`              | Align PR branches with their base (rebase if no conflicts) - [doc](doc/fg-align.md)     |
+| `fg-prs.js`                | List PRs for current/stack branches with optional conflict check - [doc](doc/fg-prs.md) |
+| `fg-cherry.js`             | Find which branches contain a commit (local cache, offline) - [doc](doc/fg-cherry.md)   |
+| `fg-cherry-cache.js`       | Build/refresh the commit → patch-id → branch cache - [doc](doc/fg-cherry-cache.md)      |
+| `fg-find-commit-origin.js` | Trace commit origin across branches and PRs - [doc](doc/fg-find-commit-origin.md)       |
+| `fg-branch-diff.js`        | Compare branches by patch content (not just SHA) - [doc](doc/fg-branch-diff.md)         |
+| `fg-branch-parents.js`     | Print fork-parent chain for a branch - [doc](doc/fg-branch-parents.md)                  |
+| `fg-open.js`               | Open the current branch or its PR in the browser - [doc](doc/fg-open.md)                |
+| `fg-sync.js`               | Sync branches/tags between two repos - [doc](doc/fg-sync.md)                            |
+| `fg-pull.js`               | Batch-pull commits from upstream into current branch - [doc](doc/fg-pull.md)            |
+| `fg-log.js`                | View activity log written by forgejo-cli commands - [doc](doc/fg-log.md)                |
 
 ### Redmine Integration
 
-| Tool | Description |
-|------|-------------|
+| Tool            | Description                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------ |
 | `red-commit.js` | Commit with automatic Redmine issue notes (also: `--hook` for post-commit, `-f` for force) - [doc](doc/red-commit.md) |
-| `red-pr.js` | Create branch + PR from a Redmine ticket - [doc](doc/red-pr.md) |
-| `red-open.js` | Open the current Redmine ticket (from branch name) in the browser - [doc](doc/red-open.md) |
+| `red-pr.js`     | Create branch + PR from a Redmine ticket - [doc](doc/red-pr.md)                            |
+| `red-open.js`   | Open the current Redmine ticket (from branch name) in the browser - [doc](doc/red-open.md) |
+
+### Code Review
+
+| Tool           | Description                                                            |
+| -------------- | ---------------------------------------------------------------------- |
+| `fg-review.js` | Run Alibaba open-code-review (`ocr`) on a PR - [doc](doc/fg-review.md) |
 
 ### Other Utilities
 
-| Tool | Description |
-|------|-------------|
+| Tool         | Description                                                        |
+| ------------ | ------------------------------------------------------------------ |
 | `gsearch.js` | Search commit messages across all branches - [doc](doc/gsearch.md) |
 
 ### Shared Modules
 
-| Module | Description |
-|--------|-------------|
-| `commit-cache.js` | Consolidated cache backing `fg-cherry-cache.js`, `fg-cherry.js`, `fg-find-commit-origin.js` - [doc](doc/commit-cache.md) |
+| Module             | Description                                                                             |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| `commit-cache.js`  | Consolidated cache backing `fg-cherry-cache.js`, `fg-cherry.js`, `fg-find-commit-origin.js` - [doc](doc/commit-cache.md) |
 | `forgejo-utils.js` | Forgejo/Gitea API primitives (`getRepoContext`, `getHeaders`, `fetchAllPages`, `mapWithConcurrency`) |
-| `red-utils.js` | Redmine API primitives (`fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`) |
-| `utils.js` | General-purpose utilities (`fail`/`info`/`ok` logging, `git()` runner, `readPackageJson`, `sanitizeBranchName`) |
-| `get-secret.js` | Read secrets from env var / `~/.forgejo-cli.env` / OS vault, with a GUI-friendly "silently degrade" mode |
+| `red-utils.js`     | Redmine API primitives (`fetchRedmineIssue`, `updateRedmineField`, `createPullRequest`) |
+| `utils.js`         | General-purpose utilities (`fail`/`info`/`ok` logging, `git()` runner, `readPackageJson`, `sanitizeBranchName`) |
+| `get-secret.js`    | Read secrets from env var / `~/.forgejo-cli.env` / OS vault, with a GUI-friendly "silently degrade" mode |
 
 ---
 
@@ -91,11 +97,21 @@ it can't (or would require interactive input), it fails silently with a warning.
 
 ### 1. Environment Variables
 
-| Variable | Required by | Description |
-|----------|-------------|-------------|
-| `FORGEJO_TOKEN` | All fg-* tools, red-pr.js | Forgejo/Gitea personal access token |
-| `REDMINE_URL` | red-commit.js, red-pr.js | Base URL of your Redmine instance (e.g. `https://redmine.example.com`) |
-| `REDMINE_API_KEY` | red-commit.js, red-pr.js | Your Redmine API key |
+| Variable           | Required by               | Description                                                            |
+| ------------------ | ------------------------- | ---------------------------------------------------------------------- |
+| `FORGEJO_TOKEN`    | All fg-* tools, red-pr.js | Forgejo/Gitea personal access token                                    |
+| `REDMINE_URL`      | red-commit.js, red-pr.js  | Base URL of your Redmine instance (e.g. `https://redmine.example.com`) |
+| `REDMINE_API_KEY`  | red-commit.js, red-pr.js  | Your Redmine API key                                                   |
+| `OCR_LLM_URL`      | fg-review.js*             | Model endpoint (e.g. `https://gateway.example.com/v1`)                 |
+| `OCR_LLM_TOKEN`    | fg-review.js*             | Model API key                                                          |
+| `OCR_LLM_MODEL`    | fg-review.js*             | Model name (e.g. `gpt-5`)                                              |
+| `OCR_LLM_PROTOCOL` | fg-review.js              | `anthropic`, `openai`, or `openai-responses` (optional)                |
+
+\* Required only for env-based model setup; otherwise `ocr` uses
+`~/.opencodereview/config.json`. A saved OCR provider takes precedence over
+the environment; `fg-review.js` warns when that happens. Pass `--url`,
+`--token` (prefer `--token-stdin`), `--model`, or `--protocol` to override the
+endpoint for a single run. See [doc/fg-review.md](doc/fg-review.md).
 
 To set them temporarily (PowerShell):
 
@@ -154,11 +170,13 @@ This file is checked after environment variables but before the OS vault.
 Store secrets once in your OS vault — the scripts will read them automatically.  
 Below is the mapping of environment variables to vault service names:
 
-| Environment Variable | Vault Service Name     | Description                      |
-|----------------------|------------------------|----------------------------------|
-| `FORGEJO_TOKEN`      | `forgejo-token`        | Forgejo/Gitea personal access token |
-| `REDMINE_URL`        | `redmine-url`          | Base URL of your Redmine instance |
-| `REDMINE_API_KEY`    | `redmine-api-token`    | Your Redmine API key              |
+| Environment Variable   | Vault Service Name       | Description                         |
+| ---------------------- | ------------------------ | ----------------------------------- |
+| `FORGEJO_TOKEN`        | `forgejo-token`          | Forgejo/Gitea personal access token |
+| `REDMINE_URL`          | `redmine-url`            | Base URL of your Redmine instance   |
+| `REDMINE_API_KEY`      | `redmine-api-token`      | Your Redmine API key                |
+| `OCR_LLM_URL`          | `ocr-llm-url`            | Model endpoint for `fg-review.js`   |
+| `OCR_LLM_TOKEN`        | `ocr-llm-token`          | Model API key for `fg-review.js`    |
 
 #### Windows (Credential Manager)
 
@@ -169,6 +187,8 @@ Built-in — no additional dependencies.
 cmdkey /generic:forgejo-token   /user:%USERNAME% /pass:your_token
 cmdkey /generic:redmine-url     /user:%USERNAME% /pass:https://redmine.example.com
 cmdkey /generic:redmine-api-token /user:%USERNAME% /pass:your_api_key
+cmdkey /generic:ocr-llm-url     /user:%USERNAME% /pass:https://gateway.example.com/v1
+cmdkey /generic:ocr-llm-token   /user:%USERNAME% /pass:sk-your-model-key
 ```
 
 The scripts use PowerShell's `Get-StoredCredential` cmdlet to read them back, which is available on Windows 10/11 and Windows Server 2016+.
@@ -182,6 +202,8 @@ Built-in — no additional dependencies.
 security add-generic-password -a "$USER" -s forgejo-token -w "your_token"
 security add-generic-password -a "$USER" -s redmine-url -w "https://redmine.example.com"
 security add-generic-password -a "$USER" -s redmine-api-token -w "your_api_key"
+security add-generic-password -a "$USER" -s ocr-llm-url -w "https://gateway.example.com/v1"
+security add-generic-password -a "$USER" -s ocr-llm-token -w "sk-your-model-key"
 ```
 
 #### Linux (libsecret)
@@ -205,6 +227,8 @@ Then store each secret:
 secret-tool store --label="Forgejo Token"   service forgejo-token   username "$USER"
 secret-tool store --label="Redmine URL"     service redmine-url     username "$USER"
 secret-tool store --label="Redmine API Key" service redmine-api-token username "$USER"
+secret-tool store --label="OCR LLM URL"     service ocr-llm-url     username "$USER"
+secret-tool store --label="OCR LLM Token"   service ocr-llm-token   username "$USER"
 ```
 
 ---
