@@ -1,6 +1,6 @@
 # Change PR title prefixes - `src/fg-prefix.js`
 
-Forgejo decides whether a pull request is a draft from a prefix in its title (`WORK_IN_PROGRESS_PREFIXES`). This script adds, replaces, or removes that prefix on one or more PRs. Removing the prefix makes a PR mergeable again — that is the only way to clear the WIP gate, since `mergeable: false` for a draft is a deliberate server rule, not a conflict.
+Forgejo decides whether a pull request is a draft from a prefix in its title (`WORK_IN_PROGRESS_PREFIXES`). This script adds, replaces, removes, or lists that prefix on open PRs. Removing the prefix makes a PR mergeable again — that is the only way to clear the WIP gate, since `mergeable: false` for a draft is a deliberate server rule, not a conflict.
 
 ## Usage
 
@@ -20,6 +20,13 @@ bun run src/fg-prefix.js ready 123
 # every open PR
 bun run src/fg-prefix.js WIP: --all
 
+# list open PRs
+bun run src/fg-prefix.js --list
+bun run src/fg-prefix.js --list WIP:
+bun run src/fg-prefix.js -l W:
+# list output includes a trailing-comma PR number list for copy/paste:
+# 123,456,789,
+
 # preview without patching
 bun run src/fg-prefix.js - 123 -n
 ```
@@ -28,6 +35,7 @@ bun run src/fg-prefix.js - 123 -n
 
 | Flag              | Description                               |
 | ----------------- | ----------------------------------------- |
+| `-l`, `--list`    | List open PRs without patching; filter by prefix when given |
 | `-n`, `--dry-run` | Print old and new titles without patching |
 | `--all`           | Apply to every open PR                    |
 | `-h`, `--help`    | Show help                                 |

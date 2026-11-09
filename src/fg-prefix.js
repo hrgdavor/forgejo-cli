@@ -4,6 +4,7 @@
 // Usage:
 //   bun run src/fg-prefix.js <prefix> <PR> [PR...]
 //   bun run src/fg-prefix.js - <PR> [PR...]            remove the prefix
+//   bun run src/fg-prefix.js --list [prefix]           list open PRs (optionally filtered by prefix)
 //
 // PR numbers may be given comma-delimited (123,456) and/or as separate
 // arguments; both forms can be mixed.
@@ -33,12 +34,14 @@ function printHelp() {
     console.log("  bun run src/fg-prefix.js <prefix> <PR> [PR...]   Add or replace the prefix (e.g. WIP:, W:)");
     console.log("  bun run src/fg-prefix.js - <PR> [PR...]           Remove the prefix (mark ready for review)");
     console.log("  bun run src/fg-prefix.js <prefix> --all           Apply to every open PR");
+    console.log("  bun run src/fg-prefix.js --list [prefix]          List open PRs, optionally filtered by prefix");
     console.log("  bun run src/fg-prefix.js --help                   Show this help message");
     console.log("");
     console.log("PR numbers accept both comma-delimited (123,456) and separate-argument forms,");
     console.log("and the two can be mixed:  fg-prefix.js W: 12,34 56");
     console.log("");
     console.log("Flags:");
+    console.log("  -l, --list             List open PRs without patching; filter by <prefix> if given");
     console.log("  -n, --dry-run          Print the resulting titles without patching");
     console.log("  --all                  Operate on every open PR");
     console.log("  -h, --help             Show this help");
@@ -100,6 +103,7 @@ function parseArgs(rawArgs) {
     let prefixSpec = null;
     let targetAll = false;
     let dryRun = false;
+    let listMode = false;
     const prTokens = [];
 
     for (const arg of rawArgs) {
@@ -109,6 +113,8 @@ function parseArgs(rawArgs) {
             dryRun = true;
         } else if (arg === "--all") {
             targetAll = true;
+        } else if (arg === "--list" || arg === "-l") {
+            listMode = true;
         } else if (prefixSpec === null) {
             prefixSpec = arg;
         } else {
@@ -130,12 +136,53 @@ function parseArgs(rawArgs) {
         prefixSpec,
         targetAll,
         dryRun,
+        listMode,
         prNumbers: [...new Set(prNumbers.map(Number))]
     };
 }
 
 async function main() {
-    const { prefixSpec, targetAll, dryRun, prNumbers } = parseArgs(Bun.argv.slice(2));
+    const { prefixSpec, targetAll, dryRun, listMode, prNumbers } = parseArgs(Bun.argv.slice(2));
+
+    if (listMode) {
+        if (dryRun) fail("--dry-run has no effect with --list.");
+        if (targetAll) fail("--all has no effect with --list; --list always reads open PRs.");
+        if (prNumbers.length > 0) fail("PR numbers are not used with --list. Use an optional prefix to filter, e.g. fg-prefix.js --list WIP:.");
+        if (prefixSpec !== null && REMOVE_ALIASES.has(prefixSpec.trim().toLowerCase())) {
+            fail(`Use a prefix to filter with --list (e.g. "WIP:"). "${prefixSpec}" removes prefixes, which is not a list filter.`);
+        }
+
+        const filterPrefix = prefixSpec === null ? null : normalizePrefix(prefixSpec);
+        const prs = await fetchAllPages(`${baseUrl}/repos/${owner}/${repo}/pulls?state=open`);
+
+        console.log("");
+        info(`📍 Repo     : ${owner}/${repo}`);
+        info(`🏷️  List     : open PRs${filterPrefix ? ` with prefix "${filterPrefix}"` : " (all prefixes)"}`);
+        console.log("");
+
+        const matched = [];
+        for (const pr of prs) {
+            const { prefix } = stripPrefix(pr.title);
+            if (filterPrefix && prefix !== filterPrefix) continue;
+            matched.push({ pr, prefix });
+        }
+
+        if (matched.length === 0) {
+            ok(filterPrefix ? `No open PRs found with prefix "${filterPrefix}".` : "No open PRs found.");
+            return;
+        }
+
+        for (const { pr, prefix } of matched) {
+            const tag = prefix ? `[${prefix}]` : "[no prefix]";
+            console.log(`#${String(pr.number).padEnd(6)} ${tag.padEnd(10)} ${pr.title}`);
+        }
+
+        const csv = matched.map(({ pr }) => pr.number).join(",");
+        console.log("");
+        console.log(csv ? `${csv},` : "");
+        console.log(`🏁 ${matched.length} PR(s).`);
+        return;
+    }
 
     if (prefixSpec === null) {
         printHelp();

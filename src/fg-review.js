@@ -180,7 +180,7 @@ export function buildOcrArgs({ baseRef, headRef, opts, backgroundFile, extra = [
     if (backgroundFile) args.push("--background-file", backgroundFile);
     if (opts.effort) args.push("--effort", opts.effort);
     if (opts.model) args.push("--model", opts.model);
-
+    if (opts.concurrency) args.push("--concurrency", opts.concurrency)
     const extraHasFormat = extra.some(a => a === "--format" || a.startsWith("--format="));
     if ((opts.json || opts.post) && !extraHasFormat) {
         args.push("--format", "json", "--audience", "agent");
@@ -428,6 +428,7 @@ function parseArgs(argv) {
         authOnly: false,
         base: null,
         post: false,
+        concurrency:1,
         deleteLastReview: false,
         extra: [],
     };
