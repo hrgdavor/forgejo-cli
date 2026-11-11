@@ -1,29 +1,39 @@
-// checkExistingBranch.js - Check if a branch exists for a ticket number
+// checkExistingBranch.js - Find an existing branch for a ticket number
 //
 // Recognizes the same branch-name shapes as extractTicketFromBranch:
 //   "<num>-<title>" or "<PREFIX>-<num>-<title>" (PREFIX optional, any case).
-// If either a local or remote branch for that ticket is found, fail() halts
-// the caller so duplicate branches don't get created.
+// Returns the matching local/remote branch name, or null if none exists.
 import { git } from "./git.js";
-import { fail } from "../general/fail.js";
-import { ok } from "../general/ok.js";
 import { extractTicketFromBranch } from "../redmine/extractTicketFromBranch.js";
 
-export function checkExistingBranch(ticketNumber) {
-    const localBranches = git(["branch", "--list", "--format=%(refname:short)"]);
-    const localMatch = localBranches.stdout
-        .split("\n")
-        .find(b => extractTicketFromBranch(b) === ticketNumber);
+function branchExists(ref) {
+    return git(["show-ref", "--verify", "--quiet", ref]).exitCode === 0;
+}
 
-    const remoteBranches = git(["branch", "-r", "--list", "--format=%(refname:short)"]);
-    const remoteMatch = remoteBranches.stdout
-        .split("\n")
-        .find(b => extractTicketFromBranch(b) === ticketNumber);
+export function findExistingBranchForTicket(ticketNumber, branchName = null) {
+    const ticket = String(ticketNumber);
 
-    if (localMatch || remoteMatch) {
-        const found = localMatch || remoteMatch;
-        fail(`Branch "${found}" already exists (ticket #${ticketNumber}). Please handle manually.`);
+    const localBranches = git(["branch", "--list", "--format=%(refname:short)"]).stdout
+        .split("\n")
+        .map(b => b.trim())
+        .filter(Boolean);
+    let localMatch = localBranches.find(b => extractTicketFromBranch(b) === ticket) || null;
+
+    const remoteBranches = git(["branch", "-r", "--list", "--format=%(refname:short)"]).stdout
+        .split("\n")
+        .map(b => b.trim())
+        .filter(Boolean);
+    let remoteMatch = remoteBranches.find(b => extractTicketFromBranch(b) === ticket) || null;
+
+    if (branchName) {
+        if (!localMatch && branchExists(`refs/heads/${branchName}`)) localMatch = branchName;
+        if (!remoteMatch && branchExists(`refs/remotes/origin/${branchName}`)) remoteMatch = `origin/${branchName}`;
     }
 
-    ok(`No existing branch found for ticket #${ticketNumber}.`);
+    return { local: localMatch || null, remote: remoteMatch || null };
+}
+
+export function checkExistingBranch(ticketNumber) {
+    const { local, remote } = findExistingBranchForTicket(ticketNumber);
+    return local || remote || null;
 }

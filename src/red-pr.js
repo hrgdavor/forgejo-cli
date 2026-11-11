@@ -21,9 +21,9 @@ import { logActivity, hasPrActivityForTicketToday } from "./util/general/logActi
 import {
     fetchRedmineIssue, createPullRequest, computeBranchConfig, computeBranchName, resolveTicketType,
     validateTicketNumber, getCurrentBranch, promptChoice,
-    checkExistingBranch, createBranch, pushBranch, retryPushBranch,
+    findExistingBranchForTicket, createBranch, pushBranch, retryPushBranch,
     prInfoText, appendRedminePrField, getRedmineConfig,
-    checkForgejoAvailability, findPrForBranch, checkoutBranch, hasUncommittedChanges
+    checkForgejoAvailability, findPrForBranch, findOpenPrForTicket, checkoutBranch, hasUncommittedChanges
 } from "./red-utils.js";
 
 
@@ -88,48 +88,78 @@ async function main() {
     console.log(`🌿 New branch     : ${branchName}`);
     console.log("");
 
-    // If a PR already exists for this branch, offer to just switch to it -
-    // but only when the worktree is clean, otherwise the checkout would fail
-    // or drag uncommitted work along.
-    const existingPr = await findPrForBranch(branchName);
+    // If an open PR already exists for this ticket/branch, offer to switch to it
+    // instead of creating a duplicate branch/PR. Match by computed branch name
+    // and by ticket number in head branch (title/type may have changed).
+    const existingPr = await findPrForBranch(branchName) || await findOpenPrForTicket(ticketNumber);
     if (existingPr) {
-        info(`PR #${existingPr.number} already exists for branch "${branchName}".`);
-        if (hasUncommittedChanges()) {
-            console.log("⚠️  Uncommitted changes in the working tree - skipping the checkout offer.");
-            console.log("   Commit or stash them, then re-run to switch to the branch.");
-            console.log("Continuing with PR creation...");
-            console.log("");
-        } else {
-            const switchToPr = await promptChoice(
-                `Switch to branch "${branchName}"? (y/N) `,
-                input => input === "y" || input === "yes"
-            );
-            if (switchToPr) {
-                checkoutBranch(branchName);
-                if (!hasPrActivityForTicketToday(ticketNumber)) {
-                    logActivity(`#${ticketNumber} ${title}`, ticketNumber);
-                }
-                console.log("");
-                console.log("Done! 🎉");
-                console.log(`   Branch : ${branchName}`);
-                console.log(`   PR     : ${existingPr.html_url}`);
-                process.exit(0);
-            }
-            console.log("Continuing with PR creation...");
-            console.log("");
+        const existingBranch = existingPr.head?.ref || branchName;
+        info(`PR #${existingPr.number} already exists for branch "${existingBranch}".`);
+        if (currentBranch === existingBranch) {
+            ok(`Already on branch "${existingBranch}".`);
+            console.log(`   PR     : ${existingPr.html_url}`);
+            process.exit(0);
         }
+        if (hasUncommittedChanges()) {
+            console.log("⚠️  Uncommitted changes in the working tree - cannot switch branches.");
+            console.log("   Commit or stash them, then re-run to switch to the PR branch.");
+            process.exit(0);
+        }
+        const switchToPr = await promptChoice(
+            `Switch to branch "${existingBranch}"? (y/N) `,
+            input => input === "y" || input === "yes"
+        );
+        if (switchToPr) {
+            checkoutBranch(existingBranch);
+            if (!hasPrActivityForTicketToday(ticketNumber)) {
+                logActivity(`#${ticketNumber} ${title}`, ticketNumber);
+            }
+            console.log("");
+            console.log("Done! 🎉");
+            console.log(`   Branch : ${existingBranch}`);
+            console.log(`   PR     : ${existingPr.html_url}`);
+            process.exit(0);
+        }
+        console.log("Aborted (PR already exists).");
+        process.exit(0);
     }
 
     let prTarget = defaultBaseBranch;
 
     if (currentBranch === branchName) { // resuming
-        info(
-            `Branch "${branchName}" is already checked out - resuming after a failed push. ` +
-            `Skipping prompts and branch creation; using default base "${defaultBaseBranch}".`
-        );
-        ok(`Resuming on existing branch "${branchName}".`);
-        retryPushBranch(branchName);
+        ok(`Already on branch "${branchName}".`);
+        process.exit(0);
     } else {
+        const { local, remote } = findExistingBranchForTicket(ticketNumber, branchName);
+        const foundBranch = local || remote || null;
+
+        if (foundBranch) {
+            const targetBranch = local || remote.replace(/^origin\//, "");
+            info(`Branch "${foundBranch}" already exists for ticket #${ticketNumber} (no open PR found).`);
+            if (currentBranch === targetBranch) {
+                ok(`Already on branch "${targetBranch}".`);
+                process.exit(0);
+            }
+            if (hasUncommittedChanges()) {
+                console.log("⚠️  Uncommitted changes in the working tree - cannot switch branches.");
+                console.log("   Commit or stash them, then re-run to switch to the branch.");
+                process.exit(0);
+            }
+            const switchToBranch = await promptChoice(
+                `Switch to branch "${targetBranch}"? (y/N) `,
+                input => input === "y" || input === "yes"
+            );
+            if (switchToBranch) {
+                checkoutBranch(targetBranch);
+                console.log("");
+                console.log(`Switched to existing branch "${targetBranch}".`);
+                console.log("Create a PR manually if needed, or re-run after pushing.");
+                process.exit(0);
+            }
+            console.log("Aborted.");
+            process.exit(0);
+        }
+
         if (currentBranch !== defaultBaseBranch) {
             const targetChoice = await promptChoice(
                 `🎯 Target PR at "${currentBranch}" (current) or "${defaultBaseBranch}"? [c/d] (default: d) `,
@@ -155,11 +185,10 @@ async function main() {
         }
         console.log("");
 
-        checkExistingBranch(ticketNumber);
         createBranch(branchName);
         pushBranch(branchName);
     }
-    
+
     const maxTitleLen = pkg.redmine_pr_title_max || 80;
     // Prefix with the ticket type (e.g. "BUG:") when resolved — the leading
     // "TYPE:" pattern is what many editors/CI highlight as a special commit
